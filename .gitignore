@@ -1,0 +1,66 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+!.env.docker.example
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.docker.example
+*.pem
+*.key
+credentials*.json
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node and frontend build output
+node_modules/
+frontend/dist/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Full datasets and database exports
+data/raw/*
+!data/raw/README.md
+data/processed/*
+!data/processed/README.md
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.xlsm
+*.parquet
+*.pkl
+*.pickle
+*.joblib
+*.dump
+*.backup
+*.sqlite
+*.sqlite3
+
+# Explicitly curated, de-identified sample data may be committed later
+!data/sample/*.csv
+
+# Video and other media are linked, not stored in this repository
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+
+# Editor, operating-system, and log files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

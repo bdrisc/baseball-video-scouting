@@ -1,0 +1,37 @@
+import type { Pitch } from "../types/api";
+
+export function makePitch(overrides: Partial<Pitch> = {}): Pitch {
+  return {
+    pitch_id: "824566_8_1",
+    game_pk: 824566,
+    pitcher_id: 1,
+    batter_id: 2,
+    pitcher_name: "Messick, Parker",
+    batter_name: "Test Batter",
+    game_date: "2026-08-07",
+    home_team: "CLE",
+    away_team: "CWS",
+    at_bat_number: 8,
+    pitch_number: 1,
+    inning: 1,
+    inning_half: "Top",
+    batter_side: "R",
+    pitch_type: "FF",
+    velocity: 94.0,
+    spin_rate: 2350,
+    horizontal_break: -0.4,
+    vertical_break: 1.3,
+    release_extension: 6.5,
+    plate_x: 0.1,
+    plate_z: 2.6,
+    balls: 0,
+    strikes: 0,
+    description: "called_strike",
+    events: null,
+    exit_velocity: null,
+    launch_angle: null,
+    video_url: "https://www.mlb.com/video/example-fastball",
+    video_available: true,
+    ...overrides,
+  };
+}

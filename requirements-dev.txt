@@ -1,0 +1,6 @@
+-r backend/requirements.txt
+-r scripts/requirements.txt
+
+pytest>=8,<10
+pytest-cov>=5,<8
+ruff>=0.12,<1
