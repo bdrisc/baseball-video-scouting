@@ -1,0 +1,142 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless backend for the Baseball Video Scouting application
+
+Parameters:
+  AllowedFrontendOrigin:
+    Type: String
+    Default: http://localhost:5173
+    Description: Browser origin allowed to call the FastAPI backend
+
+Resources:
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/http-api/baseball-video-scouting-api
+      RetentionInDays: 14
+      Tags:
+        - Key: Project
+          Value: baseball-video-scouting
+        - Key: Environment
+          Value: portfolio
+        - Key: Owner
+          Value: bdrisc
+        - Key: ManagedBy
+          Value: sam
+
+  BackendApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: baseball-video-scouting-api
+      StageName: "$default"
+      Description: HTTP API for the Baseball Video Scouting FastAPI backend
+      FailOnWarnings: true
+      PropagateTags: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 10
+        ThrottlingRateLimit: 5
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+        Format: >-
+          {"requestId":"$context.requestId","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","routeKey":"$context.routeKey","status":"$context.status","responseLength":"$context.responseLength","integrationError":"$context.integrationErrorMessage"}
+      Tags:
+        Project: baseball-video-scouting
+        Environment: portfolio
+        Owner: bdrisc
+        ManagedBy: sam
+
+  BackendFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: baseball-video-scouting-lambda-role
+      Description: Execution role for the Baseball Video Scouting Lambda function
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Project
+          Value: baseball-video-scouting
+        - Key: Environment
+          Value: portfolio
+        - Key: Owner
+          Value: bdrisc
+        - Key: ManagedBy
+          Value: sam
+
+  BackendFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      DockerContext: .
+      Dockerfile: backend/Dockerfile.lambda
+      DockerTag: python3.12-v1
+    Properties:
+      FunctionName: baseball-video-scouting-backend
+      Description: FastAPI backend running through the AWS Lambda Web Adapter
+      PackageType: Image
+      Architectures:
+        - x86_64
+      MemorySize: 512
+      Timeout: 30
+      Role: !GetAtt BackendFunctionRole.Arn
+      Environment:
+        Variables:
+          AWS_LWA_PORT: "8000"
+          AWS_LWA_READINESS_CHECK_PATH: "/"
+          AWS_LWA_ENABLE_COMPRESSION: "true"
+          FRONTEND_ORIGINS: !Ref AllowedFrontendOrigin
+      Events:
+        RootRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BackendApi
+            Path: /
+            Method: ANY
+            PayloadFormatVersion: "2.0"
+        ProxyRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BackendApi
+            Path: /{proxy+}
+            Method: ANY
+            PayloadFormatVersion: "2.0"
+      Tags:
+        Project: baseball-video-scouting
+        Environment: portfolio
+        Owner: bdrisc
+        ManagedBy: sam
+
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${BackendFunction}
+      RetentionInDays: 14
+      Tags:
+        - Key: Project
+          Value: baseball-video-scouting
+        - Key: Environment
+          Value: portfolio
+        - Key: Owner
+          Value: bdrisc
+        - Key: ManagedBy
+          Value: sam
+
+Outputs:
+  ApiBaseUrl:
+    Description: Base URL for the deployed API
+    Value: !Sub https://${BackendApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+
+  ApiDocsUrl:
+    Description: Swagger documentation URL
+    Value: !Sub https://${BackendApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/docs
+
+  BackendFunctionName:
+    Description: Deployed Lambda function name
+    Value: !Ref BackendFunction

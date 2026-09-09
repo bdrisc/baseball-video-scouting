@@ -68,3 +68,4 @@ Thumbs.db
 # AWS local files and SAM build output
 .aws/
 .aws-sam/
+samconfig.toml
