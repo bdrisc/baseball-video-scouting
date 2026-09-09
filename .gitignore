@@ -64,3 +64,7 @@ data/processed/*
 .DS_Store
 Thumbs.db
 *.log
+
+# AWS local files and SAM build output
+.aws/
+.aws-sam/
