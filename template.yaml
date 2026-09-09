@@ -8,6 +8,18 @@ Parameters:
     Default: http://localhost:5173
     Description: Browser origin allowed to call the FastAPI backend
 
+  DatabaseSecretArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret containing DATABASE_URL
+
+  ReadOnlyMode:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Disables API write operations in the public deployment
+
 Resources:
   ApiAccessLogGroup:
     Type: AWS::Logs::LogGroup
@@ -61,6 +73,15 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ReadDatabaseSecret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref DatabaseSecretArn
       Tags:
         - Key: Project
           Value: baseball-video-scouting
@@ -92,6 +113,8 @@ Resources:
           AWS_LWA_READINESS_CHECK_PATH: "/"
           AWS_LWA_ENABLE_COMPRESSION: "true"
           FRONTEND_ORIGINS: !Ref AllowedFrontendOrigin
+          DB_SECRET_ARN: !Ref DatabaseSecretArn
+          READ_ONLY_MODE: !Ref ReadOnlyMode
       Events:
         RootRoute:
           Type: HttpApi

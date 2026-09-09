@@ -1,8 +1,18 @@
 # Baseball Video Scouting Workspace
 
+[Open the live application](https://dctxxfgaduzx1.cloudfront.net) · [View the FastAPI documentation](https://ne262esfdi.execute-api.us-east-1.amazonaws.com/docs)
+
 A full-stack baseball operations portfolio project that connects pitch-level Baseball Savant data, official MLB video links, PostgreSQL, a FastAPI REST API, and an interactive React scouting interface.
 
-The application supports pitch search, visual analysis, video review, ordered playlists, scouting notes, and an on-screen advance report. It is a public workflow inspired by professional video-scouting systems; it is not BATS, TruMedia, or Synergy experience.
+The application supports pitch searching, visual analysis, official video review, ordered playlists, scouting notes, and an advance report. It is a public workflow inspired by systems used in professional baseball, but it is not BATS, TruMedia, or Synergy experience.
+
+## Live portfolio version
+
+The deployed version uses an intentionally curated sample of Parker Messick's five outings from August 7 through August 30, 2026. The sample contains 496 pitches across five games, allowing the pitch-level data and video associations to be checked carefully while keeping the project focused on workflow design rather than dataset size.
+
+The public application operates in read-only mode. Visitors can filter pitches, inspect charts, add pitches to an in-browser review queue, reorder them, write temporary scouting notes, and open official video links. Permanent playlist database writes remain available only in the local development version.
+
+The application stores links to official MLB video pages. It does not download, host, embed, or redistribute MLB video files.
 
 ## Current capabilities
 
@@ -11,27 +21,41 @@ The application supports pitch search, visual analysis, video review, ordered pl
 - Validated FastAPI endpoints for pitch filters, summaries, videos, and playlist operations
 - React and TypeScript scouting workspace with Plotly charts
 - Pitch-detail and official-video navigation controls
-- Persistent ordered playlists with per-pitch notes
+- Persistent ordered playlists with per-pitch notes in local development
+- Read-only public portfolio mode with an in-browser review queue
+- Managed production deployment through AWS and Neon PostgreSQL
 - Advance-report view covering arsenal, count and handedness tendencies, location, putaway approach, and damage allowed
 - Automated Python and React tests for data logic, API behavior, SQL, playlists, video navigation, and report calculations
 - Dockerized FastAPI, React/Nginx, PostgreSQL 18, and automatic data-loading services
 
+## Application preview
+
+### Pitch-search workspace
+
+![Pitch-search workspace](docs/screenshots/workspace-overview.png)
+
+### Pitch details, video and visual analysis
+
+![Pitch analysis](docs/screenshots/pitch-analysis.png)
+
+### Advance scouting report
+
+![Advance scouting report](docs/screenshots/advance-report.png)
+
 ## Architecture
 
-```text
-Savant CSV + video-link table
-          |
-          v
-Python ETL -> cleaned pitch dataset -> PostgreSQL
-                                           |
-                                           v
-                              FastAPI REST API
-                                           |
-                                           v
-                              React scouting UI
+```mermaid
+flowchart TD
+    A["User browser"] --> B["React on S3 and CloudFront"]
+    B --> C["Amazon API Gateway"]
+    C --> D["FastAPI on AWS Lambda"]
+    D --> E["Neon PostgreSQL"]
+    B --> F["Official MLB video pages"]
 ```
 
-The database contains URLs to official MLB pages; this repository does not contain or redistribute MLB video files.
+The Python ETL pipeline transforms permitted Baseball Savant exports, creates stable pitch IDs, derives scouting features, joins verified video links, and loads relational records into PostgreSQL. The production API retrieves its pooled database connection securely through AWS Secrets Manager.
+
+React sends requests through API Gateway to FastAPI running in a Lambda container. FastAPI queries Neon PostgreSQL and returns JSON to the interface. Video requests open official MLB pages directly in the visitor's browser; MLB video is never stored in PostgreSQL, S3, Lambda, or this repository.
 
 ## Technology
 
@@ -41,6 +65,10 @@ The database contains URLs to official MLB pages; this repository does not conta
 - React, TypeScript, Vite, and Plotly
 - pytest, Vitest, React Testing Library, and coverage reporting
 - Docker, Docker Compose, and Nginx
+- AWS SAM, ECR, Lambda Web Adapter, API Gateway, and CloudWatch
+- Amazon S3, CloudFront, IAM, and Secrets Manager
+- Neon managed PostgreSQL
+- GitHub Actions continuous integration
 
 ## Repository layout
 
@@ -232,12 +260,18 @@ Do not commit:
 
 Only small, intentionally selected sample data should ever be placed in `data/sample`.
 
-## Development roadmap
+## Release status
 
-- Step 22: automated backend and frontend tests — complete
-- Step 23: Dockerfiles and Docker Compose — complete
-- Step 24: GitHub Actions for linting, tests, and builds
-- Optional later work: versioned whiff-probability model and AWS deployment
+Version 1.0 provides a complete, deployed scouting workflow built around a carefully reviewed five-game sample. The application is publicly accessible, while its database and cloud credentials remain protected.
+
+Potential future development includes:
+
+- Expanding to a multi-pitcher or full-season dataset
+- Automated processing after manual Savant CSV uploads
+- Server-side pagination and database-generated chart summaries
+- Additional verified official video links
+- Authentication for private playlist persistence
+- Custom domain configuration
 
 ## Project positioning
 
