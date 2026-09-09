@@ -28,11 +28,32 @@ describe("buildReportMetrics", () => {
 
     expect(metrics.arsenal).toHaveLength(2);
     expect(metrics.arsenal.map((row) => row.usage)).toEqual([50, 50]);
+    expect(metrics.usageSummary).toBe("FF 50.0% · SL 50.0%");
+    expect(metrics.handedness[0].pitchMix).toEqual([
+      { pitchType: "SL", usage: 100 },
+    ]);
+    expect(metrics.handedness[0].whiffRate).toBe(100);
+    expect(metrics.handedness[0].zoneRate).toBe(0);
     expect(metrics.putaway.sampleSize).toBe(1);
     expect(metrics.putaway.topPitch).toBe("SL");
     expect(metrics.putaway.whiffRate).toBe(100);
     expect(metrics.location.zoneRate).toBe(50);
     expect(metrics.damage.hardHitRate).toBe(100);
     expect(metrics.damage.mostDamagedPitch).toBe("SL");
+  });
+
+  it("includes every pitch type in the usage summary", () => {
+    const pitches = ["FF", "CH", "SI", "SL", "CU"].map(
+      (pitchType, index) =>
+        makePitch({
+          pitch_id: `824566_8_${index + 1}`,
+          pitch_number: index + 1,
+          pitch_type: pitchType,
+        }),
+    );
+
+    expect(buildReportMetrics(pitches).usageSummary).toBe(
+      "FF 20.0% · CH 20.0% · SI 20.0% · SL 20.0% · CU 20.0%",
+    );
   });
 });

@@ -162,11 +162,23 @@ export default function ScoutingReport({
               <div className="report-section-heading compact-heading">
                 <div><span>04</span><h3>Handedness splits</h3></div>
               </div>
-              <dl className="report-list">
+              <dl className="report-list handedness-list">
                 {metrics.handedness.map((row) => (
                   <div key={row.side}>
                     <dt>{row.side === "L" ? "vs. LHH" : "vs. RHH"} <small>n={row.count}</small></dt>
-                    <dd>{row.topPitch} {formatPercent(row.topPitchUsage)} · Whiff {formatPercent(row.whiffRate)}</dd>
+                    <dd>
+                      {row.pitchMix.length
+                        ? row.pitchMix
+                            .map(
+                              (pitch) =>
+                                `${pitch.pitchType} ${formatPercent(pitch.usage)}`,
+                            )
+                            .join(" · ")
+                        : "—"}
+                      <small>
+                        Whiff% {formatPercent(row.whiffRate)} · Zone% {formatPercent(row.zoneRate)}
+                      </small>
+                    </dd>
                   </div>
                 ))}
               </dl>
@@ -190,7 +202,7 @@ export default function ScoutingReport({
               </div>
               <dl className="report-list">
                 <div><dt>Two-strike primary <small>n={metrics.putaway.sampleSize}</small></dt><dd>{metrics.putaway.topPitch} · {formatPercent(metrics.putaway.topPitchUsage)}</dd></div>
-                <div><dt>Whiff per swing</dt><dd>{formatPercent(metrics.putaway.whiffRate)}</dd></div>
+                <div><dt>Whiff%</dt><dd>{formatPercent(metrics.putaway.whiffRate)}</dd></div>
                 <div><dt>Best whiff pitch</dt><dd>{metrics.putaway.bestWhiffPitch}</dd></div>
                 <div><dt>Recorded strikeouts</dt><dd>{metrics.putaway.strikeouts}</dd></div>
               </dl>

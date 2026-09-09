@@ -82,6 +82,7 @@ export default function StrikeZonePlot({
         title: { text: "Horizontal location (ft)" },
         range: [-2.25, 2.25],
         fixedrange: true,
+        constrain: "domain",
         zeroline: true,
         zerolinecolor: "#c5cbd1",
         gridcolor: "#e7eaed",
@@ -90,6 +91,9 @@ export default function StrikeZonePlot({
         title: { text: "Height (ft)" },
         range: [0, 5],
         fixedrange: true,
+        scaleanchor: "x" as NonNullable<Layout["yaxis"]>["scaleanchor"],
+        scaleratio: 1,
+        constrain: "domain",
         gridcolor: "#e7eaed",
       },
       shapes: [

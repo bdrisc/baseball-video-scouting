@@ -1350,6 +1350,23 @@ button:disabled {
   text-align: right;
 }
 
+.report-list dd small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.handedness-list > div {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.handedness-list dd {
+  text-align: left;
+}
+
 .observations-section textarea {
   width: 100%;
   min-height: 150px;
