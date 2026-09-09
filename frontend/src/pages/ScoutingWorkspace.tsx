@@ -4,9 +4,9 @@ import FilterPanel from "../components/FilterPanel";
 import GameSelector from "../components/GameSelector";
 import MovementPlot from "../components/MovementPlot";
 import PitchDetails from "../components/PitchDetails";
-import PitchUsageChart from "../components/PitchUsageChart";
 import PitcherSelector from "../components/PitcherSelector";
 import PitchTable from "../components/PitchTable";
+import PitchUsageChart from "../components/PitchUsageChart";
 import PlaylistBuilder from "../components/PlaylistBuilder";
 import ResultsByBatterSideChart from "../components/ResultsByBatterSideChart";
 import ScoutingReport from "../components/ScoutingReport";
@@ -22,6 +22,7 @@ import {
   getPitcherGames,
   getPitchers,
   getPitches,
+  READ_ONLY_MODE,
 } from "../services/api";
 import type {
   Game,
@@ -374,6 +375,7 @@ export default function ScoutingWorkspace() {
               onReset={resetFilters}
             />
             <PlaylistBuilder
+              readOnly={READ_ONLY_MODE}
               stagedPitches={stagedPitches}
               scoutingNotes={scoutingNotes}
               onScoutingNoteChange={updateScoutingNote}

@@ -1,20 +1,23 @@
 import type {
   ApiErrorBody,
   HealthResponse,
+  PitchSearchFilters,
+  PitchSearchResponse,
+  Pitcher,
+  PitcherGamesResponse,
   PlaylistDetail,
   PlaylistItemsWrite,
   PlaylistRecord,
   PlaylistSummary,
   PlaylistWrite,
-  PitchSearchFilters,
-  PitchSearchResponse,
-  Pitcher,
-  PitcherGamesResponse,
 } from "../types/api";
 
 export const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
 ).replace(/\/$/, "");
+
+export const READ_ONLY_MODE =
+  (import.meta.env.VITE_READ_ONLY_MODE ?? "false").toLowerCase() === "true";
 
 interface RequestOptions {
   signal?: AbortSignal;

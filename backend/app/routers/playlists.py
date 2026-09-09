@@ -7,13 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 
 from app.database import get_db
 from app.schemas.common import PITCH_ID_PATTERN
-from app.schemas.playlists import (
-    PlaylistCreate,
-    PlaylistItemsSave,
-    PlaylistPitchCreate,
-)
+from app.schemas.playlists import PlaylistCreate, PlaylistItemsSave, PlaylistPitchCreate
+from app.services.deployment import require_playlist_write_access
 
-router = APIRouter(prefix="/playlists", tags=["playlists"])
+router = APIRouter(
+    prefix="/playlists",
+    tags=["playlists"],
+    dependencies=[Depends(require_playlist_write_access)],
+)
 
 
 PLAYLIST_ITEM_SELECT = """
@@ -65,8 +66,7 @@ def list_playlists(
 ) -> list[dict]:
     """List saved playlists with item and video counts."""
     with connection.cursor() as cursor:
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT
                 playlist.playlist_id,
                 playlist.playlist_name,
@@ -82,8 +82,7 @@ def list_playlists(
             LEFT JOIN videos AS video ON video.pitch_id = item.pitch_id
             GROUP BY playlist.playlist_id
             ORDER BY playlist.created_at DESC, playlist.playlist_id DESC
-            """
-        )
+            """)
         return cursor.fetchall()
 
 

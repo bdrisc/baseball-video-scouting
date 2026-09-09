@@ -20,6 +20,7 @@ interface PlaylistBuilderProps {
   initialPlaylistId: number | null;
   onLoadPlaylist: (playlist: PlaylistDetail | null) => void;
   onStartReview: () => void;
+  readOnly: boolean;
 }
 
 const EXAMPLE_PLAYLISTS = [
@@ -31,6 +32,7 @@ const EXAMPLE_PLAYLISTS = [
 ];
 
 export default function PlaylistBuilder({
+  readOnly,
   stagedPitches,
   scoutingNotes,
   onScoutingNoteChange,
@@ -104,6 +106,12 @@ export default function PlaylistBuilder({
   }
 
   async function savePlaylist() {
+    if (readOnly) {
+      setErrorMessage(
+        "Playlist saving is disabled in the public portfolio demo.",
+      );
+      return;
+    }
     const normalizedName = playlistName.trim();
     if (!normalizedName) {
       setErrorMessage("Enter a playlist name before saving.");
@@ -172,6 +180,13 @@ export default function PlaylistBuilder({
           {activePlaylistId ? `Playlist ${activePlaylistId}` : "New playlist"}
         </span>
       </div>
+
+      {readOnly ? (
+        <p className="playlist-status" role="status">
+          Public demo mode: build and review playlists in this browser.
+          Database saving is disabled.
+        </p>
+      ) : null}
 
       <div className="playlist-form">
         <label className="playlist-field">
@@ -242,7 +257,11 @@ export default function PlaylistBuilder({
       {stagedPitches.length === 0 ? (
         <div className="empty-state compact">
           <strong>No pitches staged</strong>
-          <span>Use Add in the table or video panel, then save the playlist.</span>
+          <span>
+            {readOnly
+              ? "Use Add in the table or video panel to build a review queue."
+              : "Use Add in the table or video panel, then save the playlist."}
+          </span>
         </div>
       ) : (
         <div className="playlist-queue editable-queue">
@@ -326,14 +345,16 @@ export default function PlaylistBuilder({
         <button
           className="primary-button"
           type="button"
-          disabled={saving || loading}
+          disabled={readOnly || saving || loading}
           onClick={() => void savePlaylist()}
         >
-          {saving
-            ? "Saving to PostgreSQL…"
-            : activePlaylistId
-              ? "Save changes"
-              : "Create playlist"}
+          {readOnly
+            ? "Saving disabled in public demo"
+            : saving
+              ? "Saving to PostgreSQL…"
+              : activePlaylistId
+                ? "Save changes"
+                : "Create playlist"}
         </button>
         <button
           className="secondary-button"
