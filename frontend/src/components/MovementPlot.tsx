@@ -80,6 +80,7 @@ export default function MovementPlot({
       xaxis: {
         title: { text: "Horizontal break (in)" },
         fixedrange: true,
+        constrain: "domain",
         zeroline: true,
         zerolinewidth: 1,
         zerolinecolor: "#9da7b0",
@@ -88,6 +89,9 @@ export default function MovementPlot({
       yaxis: {
         title: { text: "Induced vertical break (in)" },
         fixedrange: true,
+        scaleanchor: "x" as NonNullable<Layout["yaxis"]>["scaleanchor"],
+        scaleratio: 1,
+        constrain: "domain",
         zeroline: true,
         zerolinewidth: 1,
         zerolinecolor: "#9da7b0",

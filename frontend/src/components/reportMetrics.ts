@@ -34,10 +34,12 @@ export interface TendencyRow {
 export interface HandednessRow {
   side: "L" | "R";
   count: number;
-  topPitch: string;
-  topPitchUsage: number | null;
+  pitchMix: Array<{
+    pitchType: string;
+    usage: number;
+  }>;
   whiffRate: number | null;
-  averageVelocity: number | null;
+  zoneRate: number | null;
 }
 
 export interface ReportMetrics {
@@ -162,7 +164,6 @@ export function buildReportMetrics(pitches: Pitch[]): ReportMetrics {
 
   const usageSummary = arsenal.length
     ? arsenal
-        .slice(0, 3)
         .map((pitch) => `${pitch.pitchType} ${pitch.usage.toFixed(1)}%`)
         .join(" · ")
     : "—";
@@ -188,14 +189,30 @@ export function buildReportMetrics(pitches: Pitch[]): ReportMetrics {
   const handedness = (["L", "R"] as const).map((side): HandednessRow => {
     const sample = pitches.filter((pitch) => pitch.batter_side === side);
     const swings = sample.filter(isSwing);
-    const primary = topPitch(sample);
+    const locatedSample = sample.filter(
+      (pitch) => pitch.plate_x !== null && pitch.plate_z !== null,
+    );
+    const pitchCounts = new Map<string, number>();
+    sample.forEach((pitch) =>
+      pitchCounts.set(
+        pitch.pitch_type,
+        (pitchCounts.get(pitch.pitch_type) ?? 0) + 1,
+      ),
+    );
     return {
       side,
       count: sample.length,
-      topPitch: primary.pitchType,
-      topPitchUsage: primary.usage,
+      pitchMix: [...pitchCounts.entries()]
+        .map(([pitchType, count]) => ({
+          pitchType,
+          usage: rate(count, sample.length) ?? 0,
+        }))
+        .sort((a, b) => b.usage - a.usage),
       whiffRate: rate(swings.filter(isWhiff).length, swings.length),
-      averageVelocity: average(sample.map((pitch) => pitch.velocity)),
+      zoneRate: rate(
+        locatedSample.filter(isInZone).length,
+        locatedSample.length,
+      ),
     };
   });
 
