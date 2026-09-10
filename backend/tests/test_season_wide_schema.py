@@ -1,5 +1,7 @@
 """Contract tests for the season-wide PostgreSQL schema and migration."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 
