@@ -301,7 +301,6 @@ def load_savant(path: Path) -> pd.DataFrame:
         "game_pk",
         "at_bat_number",
         "pitch_number",
-        "pitch_type",
         "description",
         "balls",
         "strikes",
