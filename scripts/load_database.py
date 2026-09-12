@@ -632,9 +632,7 @@ def load_database(
             if not value
         ]
         if missing:
-            raise LoaderError(
-                "Database connection is missing: " + ", ".join(missing)
-            )
+            raise LoaderError("Database connection is missing: " + ", ".join(missing))
         connection_args = ()
         connection_kwargs = {
             "host": host,
@@ -648,17 +646,14 @@ def load_database(
 
     # autocommit=True plus transaction() gives us one explicit atomic load:
     # any failure rolls back all inserted or updated records.
-    with psycopg.connect(
-        *connection_args, **connection_kwargs, autocommit=True
-    ) as connection:
+    with psycopg.connect(*connection_args, **connection_kwargs, autocommit=True) as connection:
         with connection.transaction():
             with connection.cursor() as cursor:
                 cursor.execute("SELECT current_database(), current_user")
                 connected_database, connected_user = cursor.fetchone()
                 if expected_database and connected_database != expected_database:
                     raise LoaderError(
-                        f"Connected to {connected_database!r}, expected "
-                        f"{expected_database!r}."
+                        f"Connected to {connected_database!r}, expected {expected_database!r}."
                     )
 
                 verify_schema(cursor)
