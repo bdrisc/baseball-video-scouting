@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build a clean, video-linked Baseball Savant pitch dataset.
+"""Build a clean Baseball Savant pitch dataset with optional official video links.
 
 The pipeline keeps one row per pitch, creates and validates a stable ``pitch_id``,
-standardizes pitch names, adds scouting-friendly features, and joins video URLs
-by ``pitch_id`` (never by row position).
+standardizes pitch names, adds scouting-friendly features, and optionally joins
+video URLs by ``pitch_id`` (never by row position).
 
 Example
 -------
@@ -494,17 +494,27 @@ def validate_output(frame: pd.DataFrame, expected_rows: int) -> None:
 
 def build_dataset(
     savant_csv: Path,
-    video_table: Path,
+    video_table: Path | None,
     output: Path,
     video_sheet: str = "Video Links",
     require_all_video: bool = False,
 ) -> pd.DataFrame:
-    """Run extraction, transformation, join, validation, and load."""
+    """Run extraction, transformation, optional video join, and validation."""
     pitches = load_savant(savant_csv)
     expected_rows = len(pitches)
-    pitches = standardize_and_derive(pitches)
-    video = load_video_table(video_table, video_sheet)
-    cleaned = join_video(pitches, video, require_all_video)
+    cleaned = standardize_and_derive(pitches)
+
+    if video_table is not None:
+        video = load_video_table(video_table, video_sheet)
+        cleaned = join_video(cleaned, video, require_all_video)
+    else:
+        if require_all_video:
+            raise ValueError("--require-all-video requires --video-table.")
+        cleaned["video_url"] = ""
+        cleaned["video_level"] = ""
+        cleaned["video_notes"] = ""
+        cleaned["has_video"] = False
+
     cleaned = cleaned.reindex(columns=OUTPUT_COLUMNS)
     validate_output(cleaned, expected_rows)
 
@@ -515,10 +525,14 @@ def build_dataset(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Create an analysis-ready Savant dataset joined to pitch videos."
+        description="Create an analysis-ready Savant dataset with optional pitch videos."
     )
     parser.add_argument("--savant-csv", required=True, type=Path)
-    parser.add_argument("--video-table", required=True, type=Path)
+    parser.add_argument(
+        "--video-table",
+        type=Path,
+        help="Optional pitch-keyed video table. Video matching can be run later.",
+    )
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument(
         "--video-sheet",

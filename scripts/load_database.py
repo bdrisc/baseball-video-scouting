@@ -65,6 +65,41 @@ REQUIRED_CSV_COLUMNS = {
     "video_notes",
 }
 
+OPTIONAL_CSV_COLUMNS = {
+    "game_type",
+    "outs_when_up",
+    "pitch_name",
+    "effective_speed",
+    "release_pos_x",
+    "release_pos_y",
+    "release_pos_z",
+    "sz_top",
+    "sz_bot",
+    "arm_angle",
+    "zone",
+    "bb_type",
+    "is_strike",
+    "is_swing",
+    "is_contact",
+    "is_whiff",
+    "is_csw",
+    "is_in_zone",
+    "is_chase",
+    "times_through_order",
+    "hit_distance_sc",
+    "estimated_ba_using_speedangle",
+    "estimated_woba_using_speedangle",
+    "woba_value",
+    "delta_run_exp",
+    "bat_speed",
+    "swing_length",
+    "is_hard_hit",
+    "home_score",
+    "away_score",
+    "bat_score",
+    "fld_score",
+}
+
 PLAYER_UPSERT_SQL = """
     INSERT INTO players (mlb_id, player_name, throws, bats)
     VALUES (%(mlb_id)s, %(player_name)s, %(throws)s, %(bats)s)
@@ -76,11 +111,12 @@ PLAYER_UPSERT_SQL = """
 """
 
 GAME_UPSERT_SQL = """
-    INSERT INTO games (game_pk, game_date, home_team, away_team)
-    VALUES (%(game_pk)s, %(game_date)s, %(home_team)s, %(away_team)s)
+    INSERT INTO games (game_pk, game_date, game_type, home_team, away_team)
+    VALUES (%(game_pk)s, %(game_date)s, %(game_type)s, %(home_team)s, %(away_team)s)
     ON CONFLICT (game_pk) DO UPDATE
     SET
         game_date = EXCLUDED.game_date,
+        game_type = EXCLUDED.game_type,
         home_team = EXCLUDED.home_team,
         away_team = EXCLUDED.away_team
 """
@@ -95,21 +131,52 @@ PITCH_UPSERT_SQL = """
         pitch_number,
         inning,
         inning_half,
+        outs_when_up,
         batter_side,
         pitch_type,
+        pitch_name,
         velocity,
+        effective_velocity,
         spin_rate,
         horizontal_break,
         vertical_break,
         release_extension,
+        release_pos_x,
+        release_pos_y,
+        release_pos_z,
         plate_x,
         plate_z,
+        strike_zone_top,
+        strike_zone_bottom,
+        arm_angle,
+        zone,
         balls,
         strikes,
         description,
         events,
+        batted_ball_type,
+        is_strike,
+        is_swing,
+        is_contact,
+        is_whiff,
+        is_csw,
+        is_in_zone,
+        is_chase,
+        times_through_order,
         exit_velocity,
-        launch_angle
+        launch_angle,
+        hit_distance,
+        estimated_ba,
+        estimated_woba,
+        woba_value,
+        delta_run_expectancy,
+        bat_speed,
+        swing_length,
+        is_hard_hit,
+        home_score,
+        away_score,
+        batter_score,
+        fielding_score
     )
     VALUES (
         %(pitch_id)s,
@@ -120,21 +187,52 @@ PITCH_UPSERT_SQL = """
         %(pitch_number)s,
         %(inning)s,
         %(inning_half)s,
+        %(outs_when_up)s,
         %(batter_side)s,
         %(pitch_type)s,
+        %(pitch_name)s,
         %(velocity)s,
+        %(effective_velocity)s,
         %(spin_rate)s,
         %(horizontal_break)s,
         %(vertical_break)s,
         %(release_extension)s,
+        %(release_pos_x)s,
+        %(release_pos_y)s,
+        %(release_pos_z)s,
         %(plate_x)s,
         %(plate_z)s,
+        %(strike_zone_top)s,
+        %(strike_zone_bottom)s,
+        %(arm_angle)s,
+        %(zone)s,
         %(balls)s,
         %(strikes)s,
         %(description)s,
         %(events)s,
+        %(batted_ball_type)s,
+        %(is_strike)s,
+        %(is_swing)s,
+        %(is_contact)s,
+        %(is_whiff)s,
+        %(is_csw)s,
+        %(is_in_zone)s,
+        %(is_chase)s,
+        %(times_through_order)s,
         %(exit_velocity)s,
-        %(launch_angle)s
+        %(launch_angle)s,
+        %(hit_distance)s,
+        %(estimated_ba)s,
+        %(estimated_woba)s,
+        %(woba_value)s,
+        %(delta_run_expectancy)s,
+        %(bat_speed)s,
+        %(swing_length)s,
+        %(is_hard_hit)s,
+        %(home_score)s,
+        %(away_score)s,
+        %(batter_score)s,
+        %(fielding_score)s
     )
     ON CONFLICT (pitch_id) DO UPDATE
     SET
@@ -145,21 +243,52 @@ PITCH_UPSERT_SQL = """
         pitch_number = EXCLUDED.pitch_number,
         inning = EXCLUDED.inning,
         inning_half = EXCLUDED.inning_half,
+        outs_when_up = EXCLUDED.outs_when_up,
         batter_side = EXCLUDED.batter_side,
         pitch_type = EXCLUDED.pitch_type,
+        pitch_name = EXCLUDED.pitch_name,
         velocity = EXCLUDED.velocity,
+        effective_velocity = EXCLUDED.effective_velocity,
         spin_rate = EXCLUDED.spin_rate,
         horizontal_break = EXCLUDED.horizontal_break,
         vertical_break = EXCLUDED.vertical_break,
         release_extension = EXCLUDED.release_extension,
+        release_pos_x = EXCLUDED.release_pos_x,
+        release_pos_y = EXCLUDED.release_pos_y,
+        release_pos_z = EXCLUDED.release_pos_z,
         plate_x = EXCLUDED.plate_x,
         plate_z = EXCLUDED.plate_z,
+        strike_zone_top = EXCLUDED.strike_zone_top,
+        strike_zone_bottom = EXCLUDED.strike_zone_bottom,
+        arm_angle = EXCLUDED.arm_angle,
+        zone = EXCLUDED.zone,
         balls = EXCLUDED.balls,
         strikes = EXCLUDED.strikes,
         description = EXCLUDED.description,
         events = EXCLUDED.events,
+        batted_ball_type = EXCLUDED.batted_ball_type,
+        is_strike = EXCLUDED.is_strike,
+        is_swing = EXCLUDED.is_swing,
+        is_contact = EXCLUDED.is_contact,
+        is_whiff = EXCLUDED.is_whiff,
+        is_csw = EXCLUDED.is_csw,
+        is_in_zone = EXCLUDED.is_in_zone,
+        is_chase = EXCLUDED.is_chase,
+        times_through_order = EXCLUDED.times_through_order,
         exit_velocity = EXCLUDED.exit_velocity,
-        launch_angle = EXCLUDED.launch_angle
+        launch_angle = EXCLUDED.launch_angle,
+        hit_distance = EXCLUDED.hit_distance,
+        estimated_ba = EXCLUDED.estimated_ba,
+        estimated_woba = EXCLUDED.estimated_woba,
+        woba_value = EXCLUDED.woba_value,
+        delta_run_expectancy = EXCLUDED.delta_run_expectancy,
+        bat_speed = EXCLUDED.bat_speed,
+        swing_length = EXCLUDED.swing_length,
+        is_hard_hit = EXCLUDED.is_hard_hit,
+        home_score = EXCLUDED.home_score,
+        away_score = EXCLUDED.away_score,
+        batter_score = EXCLUDED.batter_score,
+        fielding_score = EXCLUDED.fielding_score
 """
 
 VIDEO_UPSERT_SQL = """
@@ -209,6 +338,16 @@ def optional_float(value: Any) -> float | None:
     return float(value)
 
 
+def optional_integer(value: Any) -> int | None:
+    """Convert an integer-like value while preserving missing values as NULL."""
+    number = optional_float(value)
+    if number is None:
+        return None
+    if not number.is_integer():
+        raise LoaderError(f"Expected an integer value, received {value!r}.")
+    return int(number)
+
+
 def parse_boolean(value: Any) -> bool:
     """Parse common CSV boolean representations."""
     if isinstance(value, bool):
@@ -232,6 +371,9 @@ def load_cleaned_csv(csv_path: Path) -> pd.DataFrame:
     missing_columns = sorted(REQUIRED_CSV_COLUMNS - set(data.columns))
     if missing_columns:
         raise LoaderError("Cleaned CSV is missing required columns: " + ", ".join(missing_columns))
+
+    for column in OPTIONAL_CSV_COLUMNS - set(data.columns):
+        data[column] = pd.NA
 
     data["pitch_id"] = data["pitch_id"].astype("string").str.strip()
     if data["pitch_id"].isna().any() or data["pitch_id"].eq("").any():
@@ -310,7 +452,7 @@ def prepare_players(data: pd.DataFrame) -> list[dict[str, Any]]:
 
 def prepare_games(data: pd.DataFrame) -> list[dict[str, Any]]:
     """Prepare one consistent record per game_pk."""
-    columns = ["game_pk", "game_date", "home_team", "away_team"]
+    columns = ["game_pk", "game_date", "game_type", "home_team", "away_team"]
     distinct = data[columns].drop_duplicates()
     conflict_mask = distinct["game_pk"].duplicated(keep=False)
     if conflict_mask.any():
@@ -326,6 +468,7 @@ def prepare_games(data: pd.DataFrame) -> list[dict[str, Any]]:
             {
                 "game_pk": int(row.game_pk),
                 "game_date": row.game_date,
+                "game_type": optional_text(row.game_type),
                 "home_team": str(row.home_team).strip().upper(),
                 "away_team": str(row.away_team).strip().upper(),
             }
@@ -336,7 +479,7 @@ def prepare_games(data: pd.DataFrame) -> list[dict[str, Any]]:
 def prepare_pitches(
     data: pd.DataFrame, player_id_by_mlb_id: dict[int, int]
 ) -> list[dict[str, Any]]:
-    """Map Savant fields to the relational pitches table."""
+    """Map the complete cleaned Savant contract to the pitches table."""
     records: list[dict[str, Any]] = []
 
     for row in data.itertuples(index=False):
@@ -348,7 +491,6 @@ def prepare_pitches(
         except KeyError as exc:
             raise LoaderError(f"Player ID mapping is missing MLB ID {exc.args[0]}.") from exc
 
-        inning = optional_float(row.inning)
         records.append(
             {
                 "pitch_id": str(row.pitch_id),
@@ -357,23 +499,54 @@ def prepare_pitches(
                 "batter_id": batter_id,
                 "at_bat_number": int(row.at_bat_number),
                 "pitch_number": int(row.pitch_number),
-                "inning": int(inning) if inning is not None else None,
+                "inning": optional_integer(row.inning),
                 "inning_half": optional_text(row.inning_topbot),
+                "outs_when_up": optional_integer(row.outs_when_up),
                 "batter_side": optional_text(row.stand),
                 "pitch_type": optional_text(row.pitch_type),
+                "pitch_name": optional_text(row.pitch_name),
                 "velocity": optional_float(row.release_speed),
+                "effective_velocity": optional_float(row.effective_speed),
                 "spin_rate": optional_float(row.release_spin_rate),
                 "horizontal_break": optional_float(row.pfx_x),
                 "vertical_break": optional_float(row.pfx_z),
                 "release_extension": optional_float(row.release_extension),
+                "release_pos_x": optional_float(row.release_pos_x),
+                "release_pos_y": optional_float(row.release_pos_y),
+                "release_pos_z": optional_float(row.release_pos_z),
                 "plate_x": optional_float(row.plate_x),
                 "plate_z": optional_float(row.plate_z),
+                "strike_zone_top": optional_float(row.sz_top),
+                "strike_zone_bottom": optional_float(row.sz_bot),
+                "arm_angle": optional_float(row.arm_angle),
+                "zone": optional_integer(row.zone),
                 "balls": int(row.balls),
                 "strikes": int(row.strikes),
                 "description": optional_text(row.description),
                 "events": optional_text(row.events, none_placeholder=True),
+                "batted_ball_type": optional_text(row.bb_type, none_placeholder=True),
+                "is_strike": parse_boolean(row.is_strike),
+                "is_swing": parse_boolean(row.is_swing),
+                "is_contact": parse_boolean(row.is_contact),
+                "is_whiff": parse_boolean(row.is_whiff),
+                "is_csw": parse_boolean(row.is_csw),
+                "is_in_zone": parse_boolean(row.is_in_zone),
+                "is_chase": parse_boolean(row.is_chase),
+                "times_through_order": optional_integer(row.times_through_order),
                 "exit_velocity": optional_float(row.launch_speed),
                 "launch_angle": optional_float(row.launch_angle),
+                "hit_distance": optional_float(row.hit_distance_sc),
+                "estimated_ba": optional_float(row.estimated_ba_using_speedangle),
+                "estimated_woba": optional_float(row.estimated_woba_using_speedangle),
+                "woba_value": optional_float(row.woba_value),
+                "delta_run_expectancy": optional_float(row.delta_run_exp),
+                "bat_speed": optional_float(row.bat_speed),
+                "swing_length": optional_float(row.swing_length),
+                "is_hard_hit": parse_boolean(row.is_hard_hit),
+                "home_score": optional_integer(row.home_score),
+                "away_score": optional_integer(row.away_score),
+                "batter_score": optional_integer(row.bat_score),
+                "fielding_score": optional_integer(row.fld_score),
             }
         )
 
@@ -431,36 +604,56 @@ def count_existing(cursor: psycopg.Cursor[Any], query: str, ids: list[Any]) -> i
 def load_database(
     data: pd.DataFrame,
     *,
-    host: str,
-    port: int,
-    database: str,
-    user: str,
-    password: str,
+    host: str | None = None,
+    port: int = 5432,
+    database: str | None = None,
+    user: str | None = None,
+    password: str | None = None,
+    connection_string: str | None = None,
 ) -> dict[str, Any]:
     """Load every entity inside one atomic PostgreSQL transaction."""
     players = prepare_players(data)
     games = prepare_games(data)
     source_pitch_ids = data["pitch_id"].astype(str).tolist()
 
-    connection_kwargs = {
-        "host": host,
-        "port": port,
-        "dbname": database,
-        "user": user,
-        "password": password,
-        "connect_timeout": 10,
-    }
+    if connection_string:
+        connection_args = (connection_string,)
+        connection_kwargs: dict[str, Any] = {"connect_timeout": 10}
+        expected_database = None
+    else:
+        missing = [
+            name
+            for name, value in (
+                ("host", host),
+                ("database", database),
+                ("user", user),
+                ("password", password),
+            )
+            if not value
+        ]
+        if missing:
+            raise LoaderError("Database connection is missing: " + ", ".join(missing))
+        connection_args = ()
+        connection_kwargs = {
+            "host": host,
+            "port": port,
+            "dbname": database,
+            "user": user,
+            "password": password,
+            "connect_timeout": 10,
+        }
+        expected_database = database
 
     # autocommit=True plus transaction() gives us one explicit atomic load:
     # any failure rolls back all inserted or updated records.
-    with psycopg.connect(**connection_kwargs, autocommit=True) as connection:
+    with psycopg.connect(*connection_args, **connection_kwargs, autocommit=True) as connection:
         with connection.transaction():
             with connection.cursor() as cursor:
                 cursor.execute("SELECT current_database(), current_user")
                 connected_database, connected_user = cursor.fetchone()
-                if connected_database != database:
+                if expected_database and connected_database != expected_database:
                     raise LoaderError(
-                        f"Connected to {connected_database!r}, expected {database!r}."
+                        f"Connected to {connected_database!r}, expected {expected_database!r}."
                     )
 
                 verify_schema(cursor)
