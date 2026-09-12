@@ -16,7 +16,8 @@ The application stores links to official MLB video pages. It does not download, 
 
 ## Current capabilities
 
-- Reproducible ETL from a Savant CSV and a pitch-keyed video-link table
+- Repeatable one-command ingestion from a manual Savant CSV export
+- Reproducible optional video joins using stable pitch IDs
 - Relational PostgreSQL storage for players, games, pitches, videos, and playlists
 - Validated FastAPI endpoints for pitch filters, summaries, videos, and playlist operations
 - React and TypeScript scouting workspace with Plotly charts
@@ -102,6 +103,7 @@ baseball-video-scouting/
 │   └── sample/
 ├── scripts/
 │   ├── clean_statcast.py
+│   ├── ingest_savant.py
 │   ├── load_database.py
 │   └── requirements.txt
 ├── docs/
@@ -191,6 +193,10 @@ python scripts\load_database.py --csv data\processed\Messick_cleaned.csv
 
 The loader prompts for the PostgreSQL password if `PGPASSWORD` is not set. It is idempotent: matching primary keys are updated instead of duplicated.
 
+For season-wide monthly exports, use the combined dry-run and ingestion command
+documented in [`docs/ingestion.md`](docs/ingestion.md). It cleans, validates,
+checks the expected season, and atomically upserts one manual Savant export.
+
 ### 6. Start FastAPI
 
 ```powershell
@@ -267,7 +273,7 @@ Version 1.0 provides a complete, deployed scouting workflow built around a caref
 Potential future development includes:
 
 - Expanding to a multi-pitcher or full-season dataset
-- Automated processing after manual Savant CSV uploads
+- Import-batch history and row-level ingestion errors
 - Server-side pagination and database-generated chart summaries
 - Additional verified official video links
 - Authentication for private playlist persistence
