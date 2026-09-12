@@ -604,36 +604,61 @@ def count_existing(cursor: psycopg.Cursor[Any], query: str, ids: list[Any]) -> i
 def load_database(
     data: pd.DataFrame,
     *,
-    host: str,
-    port: int,
-    database: str,
-    user: str,
-    password: str,
+    host: str | None = None,
+    port: int = 5432,
+    database: str | None = None,
+    user: str | None = None,
+    password: str | None = None,
+    connection_string: str | None = None,
 ) -> dict[str, Any]:
     """Load every entity inside one atomic PostgreSQL transaction."""
     players = prepare_players(data)
     games = prepare_games(data)
     source_pitch_ids = data["pitch_id"].astype(str).tolist()
 
-    connection_kwargs = {
-        "host": host,
-        "port": port,
-        "dbname": database,
-        "user": user,
-        "password": password,
-        "connect_timeout": 10,
-    }
+    if connection_string:
+        connection_args = (connection_string,)
+        connection_kwargs: dict[str, Any] = {"connect_timeout": 10}
+        expected_database = None
+    else:
+        missing = [
+            name
+            for name, value in (
+                ("host", host),
+                ("database", database),
+                ("user", user),
+                ("password", password),
+            )
+            if not value
+        ]
+        if missing:
+            raise LoaderError(
+                "Database connection is missing: " + ", ".join(missing)
+            )
+        connection_args = ()
+        connection_kwargs = {
+            "host": host,
+            "port": port,
+            "dbname": database,
+            "user": user,
+            "password": password,
+            "connect_timeout": 10,
+        }
+        expected_database = database
 
     # autocommit=True plus transaction() gives us one explicit atomic load:
     # any failure rolls back all inserted or updated records.
-    with psycopg.connect(**connection_kwargs, autocommit=True) as connection:
+    with psycopg.connect(
+        *connection_args, **connection_kwargs, autocommit=True
+    ) as connection:
         with connection.transaction():
             with connection.cursor() as cursor:
                 cursor.execute("SELECT current_database(), current_user")
                 connected_database, connected_user = cursor.fetchone()
-                if connected_database != database:
+                if expected_database and connected_database != expected_database:
                     raise LoaderError(
-                        f"Connected to {connected_database!r}, expected {database!r}."
+                        f"Connected to {connected_database!r}, expected "
+                        f"{expected_database!r}."
                     )
 
                 verify_schema(cursor)
