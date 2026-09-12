@@ -24,6 +24,7 @@ def cleaned_row() -> dict:
         "pitch_id": "824566_8_1",
         "game_pk": 824566,
         "game_date": "2026-08-07",
+        "game_type": "R",
         "home_team": "CLE",
         "away_team": "CWS",
         "player_name": "Messick, Parker",
@@ -35,20 +36,51 @@ def cleaned_row() -> dict:
         "pitch_number": 1,
         "inning": 1,
         "inning_topbot": "Top",
+        "outs_when_up": 0,
         "pitch_type": "FF",
+        "pitch_name": "Four-Seam Fastball",
         "release_speed": 94.0,
+        "effective_speed": 95.0,
         "release_spin_rate": 2350.0,
         "pfx_x": -0.4,
         "pfx_z": 1.3,
         "release_extension": 6.5,
+        "release_pos_x": 1.8,
+        "release_pos_y": 54.0,
+        "release_pos_z": 5.9,
         "plate_x": 0.1,
         "plate_z": 2.6,
+        "sz_top": 3.4,
+        "sz_bot": 1.5,
+        "arm_angle": 45.0,
+        "zone": 5,
         "balls": 0,
         "strikes": 0,
         "description": "called_strike",
         "events": "none",
+        "bb_type": "none",
+        "is_strike": True,
+        "is_swing": False,
+        "is_contact": False,
+        "is_whiff": False,
+        "is_csw": True,
+        "is_in_zone": True,
+        "is_chase": False,
+        "times_through_order": 1,
         "launch_speed": None,
         "launch_angle": None,
+        "hit_distance_sc": None,
+        "estimated_ba_using_speedangle": None,
+        "estimated_woba_using_speedangle": None,
+        "woba_value": None,
+        "delta_run_exp": -0.03,
+        "bat_speed": None,
+        "swing_length": None,
+        "is_hard_hit": False,
+        "home_score": 0,
+        "away_score": 0,
+        "bat_score": 0,
+        "fld_score": 0,
         "has_video": True,
         "video_url": "https://www.mlb.com/video/example",
         "video_level": "Pitch",
@@ -70,6 +102,7 @@ def test_cleaned_rows_map_to_relational_parent_and_child_records() -> None:
         {
             "game_pk": 824566,
             "game_date": pd.Timestamp("2026-08-07").date(),
+            "game_type": "R",
             "home_team": "CLE",
             "away_team": "CWS",
         }
@@ -77,6 +110,10 @@ def test_cleaned_rows_map_to_relational_parent_and_child_records() -> None:
     assert pitches[0]["pitcher_id"] == 10
     assert pitches[0]["batter_id"] == 11
     assert pitches[0]["events"] is None
+    assert pitches[0]["effective_velocity"] == 95.0
+    assert pitches[0]["pitch_name"] == "Four-Seam Fastball"
+    assert pitches[0]["is_csw"] is True
+    assert pitches[0]["delta_run_expectancy"] == -0.03
     assert videos[0]["pitch_id"] == "824566_8_1"
     assert videos[0]["notes"] == "First-pitch fastball"
 
