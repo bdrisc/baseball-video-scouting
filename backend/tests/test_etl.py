@@ -50,6 +50,20 @@ def test_pitch_id_is_created_from_pitch_natural_key(tmp_path) -> None:
     assert pitches["pitch_id"].is_unique
 
 
+def test_unclassified_pitch_is_preserved_as_unknown(tmp_path) -> None:
+    source = raw_savant_rows().iloc[[0]].copy()
+    source["pitch_type"] = None
+    path = tmp_path / "unclassified.csv"
+    source.to_csv(path, index=False)
+
+    cleaned = standardize_and_derive(load_savant(path))
+
+    assert len(cleaned) == 1
+    assert cleaned.loc[0, "pitch_id"] == "824566_8_1"
+    assert cleaned.loc[0, "pitch_type"] == "unknown"
+    assert cleaned.loc[0, "pitch_name"] == "4-Seam Fastball"
+
+
 def test_existing_incorrect_pitch_id_stops_the_pipeline(tmp_path) -> None:
     source = raw_savant_rows()
     source["pitch_id"] = ["wrong_1", "wrong_2"]
