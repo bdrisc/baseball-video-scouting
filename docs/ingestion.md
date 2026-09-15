@@ -77,7 +77,85 @@ Video input is optional. Without a video table, pitches are loaded with no new
 video rows. The later official-video matching process can add them by
 `pitch_id`.
 
-## 4. Load a reviewed day into Neon PostgreSQL
+## 4. Add import tracking to Neon PostgreSQL
+
+Apply the Step 3 migration once before using directory ingestion:
+
+```powershell
+$env:PGSSLMODE = "require"
+
+psql $env:DATABASE_URL -v ON_ERROR_STOP=1 `
+  -f database\migrations\002_import_batch_logging.sql
+```
+
+The migration is safe to rerun. It creates `import_batches` and
+`import_errors`, plus indexes used to recognize files that already loaded.
+
+## 5. Load all downloaded days with tracking
+
+After validating a representative day, process the directory:
+
+```powershell
+python -m scripts.ingest_savant_directory `
+  --input-dir data\raw\statcast\2026 `
+  --expected-season 2026
+```
+
+For each daily CSV, the command:
+
+- computes a SHA-256 fingerprint;
+- skips the file if that exact content already succeeded;
+- records a running import batch;
+- cleans and atomically loads the file;
+- marks successful batches with pitch-row counts;
+- records a sanitized error if the file fails;
+- continues to the next file.
+
+The command exits with code 1 if any files failed, even though other valid files
+may have succeeded. Fix the problem and run the same command again. Successful
+files are skipped, while failed files are retried as new attempts.
+
+Use `--stop-on-error` when diagnosing the first bad file. Use `--force` only
+when you intentionally want to process files whose exact hashes already
+succeeded.
+
+Review recent import history without exposing credentials:
+
+```sql
+SELECT
+    import_batch_id,
+    source_file,
+    status,
+    rows_loaded,
+    new_pitches,
+    existing_pitches,
+    error_count,
+    started_at,
+    finished_at
+FROM import_batches
+ORDER BY import_batch_id DESC
+LIMIT 25;
+```
+
+Review failures:
+
+```sql
+SELECT
+    b.source_file,
+    e.error_type,
+    e.error_message,
+    e.created_at
+FROM import_errors AS e
+INNER JOIN import_batches AS b
+    ON b.import_batch_id = e.import_batch_id
+ORDER BY e.import_error_id DESC;
+```
+
+The error table already supports an optional row number, pitch ID, and JSON
+context for future row-level recovery. Step 3 currently records file-level
+failures because each daily pitch load is deliberately all-or-nothing.
+
+## 6. Load a reviewed day into Neon PostgreSQL
 
 Copy the Neon pooled connection string, then keep it only in the current
 PowerShell process:
@@ -129,5 +207,4 @@ python -m scripts.ingest_savant `
 Do not use `--require-all-video` unless a video table is supplied and every
 pitch is expected to match.
 
-Automated ingestion of an entire directory, import-batch history, and row-level
-error storage are deliberately deferred to Step 3.
+Directory ingestion and durable file-level error history are implemented in Step 3.
