@@ -32,9 +32,15 @@ It adds:
 - indexes for pitcher-season retrieval, pitch filtering, plotting, outcomes,
   batter lookups, name search, and available video.
 
-The schema deliberately does not add import-batch tables yet. Batch status and
-row-level errors are part of Step 3, after the repeatable ingestion contract is
-defined in Step 2.
+Step 3 adds `import_batches` and `import_errors`. Apply it after migration 001:
+
+```powershell
+psql $env:DATABASE_URL -v ON_ERROR_STOP=1 `
+  -f database\migrations\002_import_batch_logging.sql
+```
+
+It records each file attempt, SHA-256 identity, status, row counts, and durable
+failure details. Successful hashes can then be skipped safely on later runs.
 
 The optional `model_predictions` table should be introduced through a later
 migration only if a production model contract is defined.
