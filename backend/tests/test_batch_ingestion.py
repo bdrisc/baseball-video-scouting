@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from scripts.ingest_savant_directory import (
     BatchIngestionError,
     ingest_directory,
@@ -138,7 +140,7 @@ def test_error_message_redacts_database_url_and_is_bounded() -> None:
 
 
 def test_missing_input_directory_stops_before_tracking(tmp_path: Path) -> None:
-    with __import__("pytest").raises(BatchIngestionError, match="Input directory"):
+    with pytest.raises(BatchIngestionError, match="Input directory"):
         ingest_directory(
             tmp_path / "missing",
             database_url="postgresql://secret",
