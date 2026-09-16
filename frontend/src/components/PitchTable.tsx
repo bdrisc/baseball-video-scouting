@@ -1,15 +1,26 @@
 import { useMemo, useState } from "react";
 
-import type { Pitch } from "../types/api";
+import type {
+  Pitch,
+  PitchSortField,
+  SortOrder,
+} from "../types/api";
 
 interface PitchTableProps {
   pitches: Pitch[];
   totalMatches: number;
+  limit: number;
+  offset: number;
+  sortBy: PitchSortField;
+  sortOrder: SortOrder;
   loading: boolean;
   selectedPitchId: string | null;
   stagedPitchIds: string[];
   onSelect: (pitch: Pitch) => void;
   onAddToPlaylist: (pitch: Pitch) => void;
+  onPageChange: (offset: number) => void;
+  onPageSizeChange: (limit: number) => void;
+  onSortChange: (field: PitchSortField, order: SortOrder) => void;
 }
 
 function readableResult(value: string | null): string {
@@ -20,11 +31,18 @@ function readableResult(value: string | null): string {
 export default function PitchTable({
   pitches,
   totalMatches,
+  limit,
+  offset,
+  sortBy,
+  sortOrder,
   loading,
   selectedPitchId,
   stagedPitchIds,
   onSelect,
   onAddToPlaylist,
+  onPageChange,
+  onPageSizeChange,
+  onSortChange,
 }: PitchTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -45,6 +63,28 @@ export default function PitchTable({
         .some((value) => String(value).toLowerCase().includes(query)),
     );
   }, [pitches, searchTerm]);
+
+  const firstResult = totalMatches === 0 ? 0 : offset + 1;
+  const lastResult = Math.min(offset + pitches.length, totalMatches);
+  const currentPage = totalMatches === 0 ? 1 : Math.floor(offset / limit) + 1;
+  const pageCount = Math.max(1, Math.ceil(totalMatches / limit));
+
+  function sortHeader(label: string, field: PitchSortField) {
+    const active = sortBy === field;
+    const nextOrder: SortOrder = active && sortOrder === "asc" ? "desc" : "asc";
+
+    return (
+      <button
+        className={`sort-button ${active ? "active" : ""}`}
+        type="button"
+        aria-label={`Sort by ${label} ${nextOrder === "asc" ? "ascending" : "descending"}`}
+        onClick={() => onSortChange(field, nextOrder)}
+      >
+        {label}
+        <span aria-hidden="true">{active ? (sortOrder === "asc" ? "↑" : "↓") : "↕"}</span>
+      </button>
+    );
+  }
 
   return (
     <section className="panel results-panel">
@@ -69,9 +109,21 @@ export default function PitchTable({
             onChange={(event) => setSearchTerm(event.target.value)}
           />
         </label>
-        <span>
-          {visiblePitches.length} visible · {pitches.length} loaded
-        </span>
+        <div className="table-toolbar-meta">
+          <span>{visiblePitches.length} visible · {pitches.length} loaded</span>
+          <label className="page-size-control">
+            <span>Rows</span>
+            <select
+              value={limit}
+              disabled={loading}
+              onChange={(event) => onPageSizeChange(Number(event.target.value))}
+            >
+              <option value={100}>100</option>
+              <option value={250}>250</option>
+              <option value={500}>500</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       {loading && pitches.length === 0 ? (
@@ -89,12 +141,12 @@ export default function PitchTable({
           <table>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Batter</th>
-                <th>Pitch</th>
-                <th>Velocity</th>
+                <th>{sortHeader("Date", "game_date")}</th>
+                <th>{sortHeader("Batter", "batter_name")}</th>
+                <th>{sortHeader("Pitch", "pitch_type")}</th>
+                <th>{sortHeader("Velocity", "velocity")}</th>
                 <th>Count</th>
-                <th>Result</th>
+                <th>{sortHeader("Result", "result")}</th>
                 <th>Location</th>
                 <th>Video</th>
                 <th>Playlist</th>
@@ -155,6 +207,34 @@ export default function PitchTable({
           </table>
         </div>
       )}
+
+      <nav className="pagination-controls" aria-label="Pitch results pages">
+        <span>
+          Showing {firstResult.toLocaleString()}–{lastResult.toLocaleString()} of{" "}
+          {totalMatches.toLocaleString()}
+        </span>
+        <div>
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={loading || offset === 0}
+            onClick={() => onPageChange(Math.max(0, offset - limit))}
+          >
+            Previous
+          </button>
+          <span>
+            Page {currentPage.toLocaleString()} of {pageCount.toLocaleString()}
+          </span>
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={loading || offset + pitches.length >= totalMatches}
+            onClick={() => onPageChange(offset + limit)}
+          >
+            Next
+          </button>
+        </div>
+      </nav>
     </section>
   );
 }

@@ -38,6 +38,8 @@ describe("API service", () => {
       video_available: true,
       limit: 100,
       offset: 0,
+      sort_by: "velocity",
+      sort_order: "desc",
     };
 
     await getPitches(filters);
@@ -49,6 +51,8 @@ describe("API service", () => {
     expect(requestUrl).toContain("balls=1");
     expect(requestUrl).toContain("strikes=2");
     expect(requestUrl).toContain("video_available=true");
+    expect(requestUrl).toContain("sort_by=velocity");
+    expect(requestUrl).toContain("sort_order=desc");
     expect(requestUrl).not.toContain("game_pk");
     expect(requestUrl).not.toContain("result=");
   });
@@ -79,6 +83,8 @@ describe("API service", () => {
         video_available: null,
         limit: 100,
         offset: 0,
+        sort_by: "game_date",
+        sort_order: "asc",
       }),
     ).rejects.toThrow("Pitcher 999 was not found.");
   });

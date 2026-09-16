@@ -69,8 +69,23 @@ export interface PitchSearchResponse {
   total: number;
   limit: number;
   offset: number;
+  sort_by: PitchSortField;
+  sort_order: SortOrder;
+  has_previous: boolean;
+  has_next: boolean;
   pitches: Pitch[];
 }
+
+export type PitchSortField =
+  | "game_date"
+  | "batter_name"
+  | "pitch_type"
+  | "velocity"
+  | "spin_rate"
+  | "inning"
+  | "result";
+
+export type SortOrder = "asc" | "desc";
 
 export interface PitchSearchFilters {
   pitcher_id: number;
@@ -89,6 +104,8 @@ export interface PitchSearchFilters {
   video_available: boolean | null;
   limit: number;
   offset: number;
+  sort_by: PitchSortField;
+  sort_order: SortOrder;
 }
 
 export interface PlaylistRecord {

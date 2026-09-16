@@ -99,6 +99,30 @@ http://127.0.0.1:8000/pitches?pitcher_id=1&pitch_type=SL&balls=1&strikes=2&batte
 
 Replace `1` with the actual internal `player_id` returned by `/pitchers`.
 
+### Pagination and server-side sorting
+
+`GET /pitches` returns at most 500 rows at a time. Use `limit` and `offset` to
+move through a large result set, and use `sort_by` plus `sort_order` to have
+PostgreSQL sort the complete filtered result before the page is selected.
+
+```text
+GET /pitches?pitcher_id=1&limit=100&offset=200&sort_by=velocity&sort_order=desc
+```
+
+Supported `sort_by` values are `game_date`, `batter_name`, `pitch_type`,
+`velocity`, `spin_rate`, `inning`, and `result`. Supported orders are `asc`
+and `desc`. These values are validated against enums and mapped to known SQL
+expressions; arbitrary column names or SQL fragments are rejected.
+
+The response includes `total`, `limit`, `offset`, `sort_by`, `sort_order`,
+`has_previous`, `has_next`, and the current `pitches` page. Stable pitch-level
+tie breakers prevent rows from moving between pages when the selected sort
+value is shared by multiple pitches.
+
+The React pitch table exposes page-size, previous/next, and sortable-column
+controls. Until the aggregate endpoints in the next scaling step are added,
+charts and non-total summary metrics describe the currently loaded page.
+
 ## Endpoints included
 
 - `GET /health`
