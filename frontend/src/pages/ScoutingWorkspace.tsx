@@ -30,13 +30,17 @@ import type {
   Pitch,
   Pitcher,
   PitchSearchFilters,
+  PitchSortField,
   PlaylistDetail,
+  SortOrder,
 } from "../types/api";
 
 type EditableFilters = Omit<
   PitchSearchFilters,
-  "pitcher_id" | "game_pk" | "limit" | "offset"
+  "pitcher_id" | "game_pk" | "limit" | "offset" | "sort_by" | "sort_order"
 >;
+
+const DEFAULT_PAGE_SIZE = 500;
 
 const defaultFilters: EditableFilters = {
   batter_side: "",
@@ -59,6 +63,10 @@ export default function ScoutingWorkspace() {
   const [games, setGames] = useState<Game[]>([]);
   const [pitches, setPitches] = useState<Pitch[]>([]);
   const [totalMatches, setTotalMatches] = useState(0);
+  const [pageLimit, setPageLimit] = useState(DEFAULT_PAGE_SIZE);
+  const [pageOffset, setPageOffset] = useState(0);
+  const [sortBy, setSortBy] = useState<PitchSortField>("game_date");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [filters, setFilters] = useState<EditableFilters>(defaultFilters);
   const debouncedFilters = useDebouncedValue(filters, 300);
   const [stagedPitches, setStagedPitches] = useState<Pitch[]>([]);
@@ -77,6 +85,10 @@ export default function ScoutingWorkspace() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPageOffset(0);
+  }, [debouncedFilters, selectedGamePk, selectedPitcherId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -173,8 +185,10 @@ export default function ScoutingWorkspace() {
             pitcher_id: selectedPitcherId as number,
             game_pk: selectedGamePk,
             ...debouncedFilters,
-            limit: 500,
-            offset: 0,
+            limit: pageLimit,
+            offset: pageOffset,
+            sort_by: sortBy,
+            sort_order: sortOrder,
           },
           controller.signal,
         );
@@ -205,7 +219,15 @@ export default function ScoutingWorkspace() {
 
     void loadPitches();
     return () => controller.abort();
-  }, [debouncedFilters, selectedGamePk, selectedPitcherId]);
+  }, [
+    debouncedFilters,
+    pageLimit,
+    pageOffset,
+    selectedGamePk,
+    selectedPitcherId,
+    sortBy,
+    sortOrder,
+  ]);
 
   const selectedPitcher =
     pitchers.find((pitcher) => pitcher.player_id === selectedPitcherId) ?? null;
@@ -215,17 +237,20 @@ export default function ScoutingWorkspace() {
     setSelectedGamePk(null);
     setSelectedPitch(null);
     setFilters(defaultFilters);
+    setPageOffset(0);
   }
 
   function handleGameChange(gamePk: number | null) {
     setSelectedGamePk(gamePk);
     setSelectedPitch(null);
+    setPageOffset(0);
   }
 
   function resetFilters() {
     setFilters(defaultFilters);
     setSelectedGamePk(null);
     setSelectedPitch(null);
+    setPageOffset(0);
   }
 
   function stagePitch(pitch: Pitch) {
@@ -413,11 +438,25 @@ export default function ScoutingWorkspace() {
             <PitchTable
               pitches={pitches}
               totalMatches={totalMatches}
+              limit={pageLimit}
+              offset={pageOffset}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
               loading={searchLoading}
               selectedPitchId={selectedPitch?.pitch_id ?? null}
               stagedPitchIds={stagedPitches.map((pitch) => pitch.pitch_id)}
               onSelect={setSelectedPitch}
               onAddToPlaylist={stagePitch}
+              onPageChange={setPageOffset}
+              onPageSizeChange={(limit) => {
+                setPageLimit(limit);
+                setPageOffset(0);
+              }}
+              onSortChange={(field, order) => {
+                setSortBy(field);
+                setSortOrder(order);
+                setPageOffset(0);
+              }}
             />
 
             <div className="two-column-grid">

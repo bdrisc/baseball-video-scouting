@@ -409,10 +409,37 @@ main {
   width: min(420px, 100%);
 }
 
-.table-toolbar > span {
+.table-toolbar-meta > span {
   color: var(--muted);
   font-size: 0.72rem;
   white-space: nowrap;
+}
+
+.table-toolbar-meta,
+.page-size-control,
+.pagination-controls,
+.pagination-controls > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.table-toolbar-meta {
+  justify-content: flex-end;
+}
+
+.page-size-control {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.page-size-control select {
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid #cfd5db;
+  border-radius: 6px;
+  background: #ffffff;
 }
 
 .table-search {
@@ -1475,6 +1502,44 @@ th {
   text-transform: uppercase;
 }
 
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.sort-button span {
+  color: #9aa2a9;
+  font-size: 0.75rem;
+}
+
+.sort-button.active,
+.sort-button.active span {
+  color: var(--maroon);
+}
+
+.pagination-controls {
+  justify-content: space-between;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.pagination-controls .secondary-button {
+  min-height: 34px;
+  margin-top: 0;
+  padding: 6px 10px;
+}
+
 tbody tr {
   cursor: pointer;
 }
@@ -1540,6 +1605,18 @@ tbody tr:hover,
   .table-toolbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .table-toolbar-meta,
+  .pagination-controls,
+  .pagination-controls > div {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .page-size-control {
+    justify-content: space-between;
   }
 
   .pitch-detail-hero {

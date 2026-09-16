@@ -4,7 +4,7 @@ import type { PitchSearchFilters } from "../types/api";
 
 type EditableFilters = Omit<
   PitchSearchFilters,
-  "pitcher_id" | "game_pk" | "limit" | "offset"
+  "pitcher_id" | "game_pk" | "limit" | "offset" | "sort_by" | "sort_order"
 >;
 
 interface FilterPanelProps {

@@ -7,13 +7,22 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from app.database import get_db
 from app.schemas.common import PITCH_ID_PATTERN
-from app.schemas.filters import PitchFilters
+from app.schemas.filters import PitchFilters, PitchSortField
 from app.services.validation import require_game, require_pitcher
 
 router = APIRouter(prefix="/pitches", tags=["pitches"])
 
 
-PITCH_SELECT = """
+PITCH_FROM = """
+    FROM pitches AS p
+    JOIN players AS pitcher ON pitcher.player_id = p.pitcher_id
+    LEFT JOIN players AS batter ON batter.player_id = p.batter_id
+    JOIN games AS g ON g.game_pk = p.game_pk
+    LEFT JOIN videos AS v ON v.pitch_id = p.pitch_id
+"""
+
+PITCH_SELECT = (
+    """
     SELECT
         p.*,
         pitcher.player_name AS pitcher_name,
@@ -28,12 +37,19 @@ PITCH_SELECT = """
         v.video_type,
         COALESCE(v.video_available, FALSE) AS video_available,
         v.notes AS video_notes
-    FROM pitches AS p
-    JOIN players AS pitcher ON pitcher.player_id = p.pitcher_id
-    LEFT JOIN players AS batter ON batter.player_id = p.batter_id
-    JOIN games AS g ON g.game_pk = p.game_pk
-    LEFT JOIN videos AS v ON v.pitch_id = p.pitch_id
 """
+    + PITCH_FROM
+)
+
+PITCH_SORT_COLUMNS = {
+    PitchSortField.GAME_DATE: "g.game_date",
+    PitchSortField.BATTER_NAME: "batter.player_name",
+    PitchSortField.PITCH_TYPE: "p.pitch_type",
+    PitchSortField.VELOCITY: "p.velocity",
+    PitchSortField.SPIN_RATE: "p.spin_rate",
+    PitchSortField.INNING: "p.inning",
+    PitchSortField.RESULT: "COALESCE(p.events, p.description)",
+}
 
 
 @router.get("")
@@ -89,30 +105,35 @@ def search_pitches(
     if conditions:
         where_clause = " WHERE " + " AND ".join(conditions)
 
-    query = (
-        PITCH_SELECT.replace(
-            "SELECT\n        p.*",
-            "SELECT\n        COUNT(*) OVER () AS total_matches,\n        p.*",
-            1,
-        )
-        + where_clause
-        + " ORDER BY g.game_date, p.game_pk, p.at_bat_number, p.pitch_number"
-        + " LIMIT %s OFFSET %s"
+    sort_column = PITCH_SORT_COLUMNS[filters.sort_by]
+    sort_order = filters.sort_order.value.upper()
+    tie_order = sort_order if filters.sort_by is PitchSortField.GAME_DATE else "DESC"
+    order_clause = (
+        f" ORDER BY {sort_column} {sort_order} NULLS LAST,"
+        f" g.game_date {tie_order}, p.game_pk {tie_order},"
+        f" p.at_bat_number {tie_order}, p.pitch_number {tie_order},"
+        f" p.pitch_id {tie_order}"
     )
-    parameters.extend((filters.limit, filters.offset))
+    count_query = "SELECT COUNT(*) AS total_matches" + PITCH_FROM + where_clause
+    page_query = PITCH_SELECT + where_clause + order_clause + " LIMIT %s OFFSET %s"
+    page_parameters = [*parameters, filters.limit, filters.offset]
 
     with connection.cursor() as cursor:
-        cursor.execute(query, parameters)
+        cursor.execute(count_query, parameters)
+        count_row = cursor.fetchone()
+        cursor.execute(page_query, page_parameters)
         rows = cursor.fetchall()
 
-    total = rows[0]["total_matches"] if rows else 0
-    for row in rows:
-        row.pop("total_matches", None)
+    total = count_row["total_matches"] if count_row else 0
 
     return {
         "total": total,
         "limit": filters.limit,
         "offset": filters.offset,
+        "sort_by": filters.sort_by.value,
+        "sort_order": filters.sort_order.value,
+        "has_previous": filters.offset > 0,
+        "has_next": filters.offset + len(rows) < total,
         "pitches": rows,
     }
 

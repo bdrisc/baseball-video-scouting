@@ -1,10 +1,28 @@
 """Validated query-parameter models for pitch searches."""
 
 from datetime import date
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.common import BatterSide, PitchType
+
+
+class PitchSortField(str, Enum):
+    """Public, allowlisted columns supported by GET /pitches sorting."""
+
+    GAME_DATE = "game_date"
+    BATTER_NAME = "batter_name"
+    PITCH_TYPE = "pitch_type"
+    VELOCITY = "velocity"
+    SPIN_RATE = "spin_rate"
+    INNING = "inning"
+    RESULT = "result"
+
+
+class SortOrder(str, Enum):
+    ASCENDING = "asc"
+    DESCENDING = "desc"
 
 
 class PitchFilters(BaseModel):
@@ -30,6 +48,8 @@ class PitchFilters(BaseModel):
     video_available: bool | None = None
     limit: int = Field(default=100, ge=1, le=500)
     offset: int = Field(default=0, ge=0)
+    sort_by: PitchSortField = PitchSortField.GAME_DATE
+    sort_order: SortOrder = SortOrder.ASCENDING
 
     @field_validator("pitch_type", mode="before")
     @classmethod
@@ -43,6 +63,13 @@ class PitchFilters(BaseModel):
     def normalize_batter_side(cls, value: object) -> object:
         if isinstance(value, str):
             return value.strip().upper()
+        return value
+
+    @field_validator("sort_by", "sort_order", mode="before")
+    @classmethod
+    def normalize_sort_value(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().lower()
         return value
 
     @field_validator("result")

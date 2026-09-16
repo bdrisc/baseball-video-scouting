@@ -19,7 +19,7 @@ The application stores links to official MLB video pages. It does not download, 
 - Repeatable one-command ingestion from a manual Savant CSV export
 - Reproducible optional video joins using stable pitch IDs
 - Relational PostgreSQL storage for players, games, pitches, videos, and playlists
-- Validated FastAPI endpoints for pitch filters, summaries, videos, and playlist operations
+- Validated FastAPI endpoints for paginated pitch filters, allowlisted server-side sorting, summaries, videos, and playlist operations
 - React and TypeScript scouting workspace with Plotly charts
 - Pitch-detail and official-video navigation controls
 - Persistent ordered playlists with per-pitch notes in local development

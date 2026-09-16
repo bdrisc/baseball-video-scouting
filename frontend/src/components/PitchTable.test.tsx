@@ -23,11 +23,18 @@ describe("PitchTable", () => {
       <PitchTable
         pitches={[fastball, slider]}
         totalMatches={2}
+        limit={100}
+        offset={0}
+        sortBy="game_date"
+        sortOrder="asc"
         loading={false}
         selectedPitchId={null}
         stagedPitchIds={[]}
         onSelect={onSelect}
         onAddToPlaylist={vi.fn()}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+        onSortChange={vi.fn()}
       />,
     );
 
@@ -48,16 +55,54 @@ describe("PitchTable", () => {
       <PitchTable
         pitches={[fastball]}
         totalMatches={1}
+        limit={100}
+        offset={0}
+        sortBy="game_date"
+        sortOrder="asc"
         loading={false}
         selectedPitchId={null}
         stagedPitchIds={[]}
         onSelect={onSelect}
         onAddToPlaylist={onAdd}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+        onSortChange={vi.fn()}
       />,
     );
 
     await user.click(screen.getByRole("button", { name: "+ Add" }));
     expect(onAdd).toHaveBeenCalledWith(fastball);
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("requests server-side sorting and the next page", async () => {
+    const user = userEvent.setup();
+    const onPageChange = vi.fn();
+    const onSortChange = vi.fn();
+    render(
+      <PitchTable
+        pitches={[fastball, slider]}
+        totalMatches={202}
+        limit={100}
+        offset={0}
+        sortBy="game_date"
+        sortOrder="asc"
+        loading={false}
+        selectedPitchId={null}
+        stagedPitchIds={[]}
+        onSelect={vi.fn()}
+        onAddToPlaylist={vi.fn()}
+        onPageChange={onPageChange}
+        onPageSizeChange={vi.fn()}
+        onSortChange={onSortChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Sort by Velocity ascending" }));
+    expect(onSortChange).toHaveBeenCalledWith("velocity", "asc");
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(onPageChange).toHaveBeenCalledWith(100);
+    expect(screen.getByText("Page 1 of 3")).toBeInTheDocument();
   });
 });
