@@ -252,7 +252,10 @@ To generate frontend coverage:
 npm run test:coverage
 ```
 
-The frontend suite covers API query serialization and errors, playlist POST requests, pitch-table search and selection, add-to-playlist behavior, official-video navigation, and advance-report metrics.
+The frontend suite covers API query serialization and errors, playlist POST
+requests, pitch-table search and selection, add-to-playlist behavior, and
+official-video navigation. Backend tests cover full-result chart and
+advance-report aggregates.
 
 ## Data and credential policy
 
@@ -273,8 +276,8 @@ Version 1.0 provides a complete, deployed scouting workflow built around a caref
 Potential future development includes:
 
 - Expanding to a multi-pitcher or full-season dataset
-- Import-batch history and row-level ingestion errors
-- Server-side pagination and database-generated chart summaries
+- Season, team, and scalable pitcher search controls
+- Official-video matching for season-wide pitch data
 - Additional verified official video links
 - Authentication for private playlist persistence
 - Custom domain configuration

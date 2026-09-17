@@ -1,6 +1,8 @@
 import type {
   ApiErrorBody,
   HealthResponse,
+  PitchAggregateFilters,
+  PitchAggregateResponse,
   PitchSearchFilters,
   PitchSearchResponse,
   Pitcher,
@@ -87,6 +89,24 @@ export function getPitches(
   return request<PitchSearchResponse>(`/pitches?${parameters.toString()}`, {
     signal,
   });
+}
+
+export function getPitchAggregates(
+  filters: PitchAggregateFilters,
+  signal?: AbortSignal,
+): Promise<PitchAggregateResponse> {
+  const parameters = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== null && value !== undefined && value !== "") {
+      parameters.set(key, String(value));
+    }
+  }
+
+  return request<PitchAggregateResponse>(
+    `/pitches/aggregates?${parameters.toString()}`,
+    { signal },
+  );
 }
 
 export function getPlaylists(signal?: AbortSignal): Promise<PlaylistSummary[]> {

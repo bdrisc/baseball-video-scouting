@@ -19,6 +19,7 @@ import useDebouncedValue from "../hooks/useDebouncedValue";
 import {
   API_BASE_URL,
   getHealth,
+  getPitchAggregates,
   getPitcherGames,
   getPitchers,
   getPitches,
@@ -28,6 +29,7 @@ import type {
   Game,
   HealthResponse,
   Pitch,
+  PitchAggregateResponse,
   Pitcher,
   PitchSearchFilters,
   PitchSortField,
@@ -62,6 +64,9 @@ export default function ScoutingWorkspace() {
   const [pitchers, setPitchers] = useState<Pitcher[]>([]);
   const [games, setGames] = useState<Game[]>([]);
   const [pitches, setPitches] = useState<Pitch[]>([]);
+  const [aggregates, setAggregates] = useState<PitchAggregateResponse | null>(
+    null,
+  );
   const [totalMatches, setTotalMatches] = useState(0);
   const [pageLimit, setPageLimit] = useState(DEFAULT_PAGE_SIZE);
   const [pageOffset, setPageOffset] = useState(0);
@@ -83,8 +88,10 @@ export default function ScoutingWorkspace() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [gamesLoading, setGamesLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [aggregateLoading, setAggregateLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [aggregateError, setAggregateError] = useState<string | null>(null);
 
   useEffect(() => {
     setPageOffset(0);
@@ -228,6 +235,48 @@ export default function ScoutingWorkspace() {
     sortBy,
     sortOrder,
   ]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    if (selectedPitcherId === null) {
+      setAggregates(null);
+      return () => controller.abort();
+    }
+
+    async function loadAggregates() {
+      setAggregateLoading(true);
+      setAggregateError(null);
+      setAggregates(null);
+
+      try {
+        const response = await getPitchAggregates(
+          {
+            pitcher_id: selectedPitcherId as number,
+            game_pk: selectedGamePk,
+            ...debouncedFilters,
+          },
+          controller.signal,
+        );
+        setAggregates(response);
+      } catch (requestError) {
+        if (!controller.signal.aborted) {
+          setAggregateError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Could not calculate full-result summaries.",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setAggregateLoading(false);
+        }
+      }
+    }
+
+    void loadAggregates();
+    return () => controller.abort();
+  }, [debouncedFilters, selectedGamePk, selectedPitcherId]);
 
   const selectedPitcher =
     pitchers.find((pitcher) => pitcher.player_id === selectedPitcherId) ?? null;
@@ -429,10 +478,16 @@ export default function ScoutingWorkspace() {
               </div>
             ) : null}
 
+            {aggregateError ? (
+              <div className="error-banner" role="alert">
+                <strong>Full-result summaries failed.</strong>
+                <span>{aggregateError}</span>
+              </div>
+            ) : null}
+
             <SummaryStats
-              pitches={pitches}
-              totalMatches={totalMatches}
-              loading={searchLoading}
+              summary={aggregates?.summary ?? null}
+              loading={aggregateLoading}
             />
 
             <PitchTable
@@ -494,22 +549,41 @@ export default function ScoutingWorkspace() {
               />
             </div>
 
-            <div className="two-column-grid">
-              <PitchUsageChart pitches={pitches} />
-              <VelocityByInningChart pitches={pitches} />
-            </div>
+            {aggregates ? (
+              <>
+                <div className="two-column-grid">
+                  <PitchUsageChart rows={aggregates.pitch_usage} />
+                  <VelocityByInningChart
+                    rows={aggregates.velocity_by_inning}
+                  />
+                </div>
 
-            <div className="two-column-grid">
-              <UsageByCountChart pitches={pitches} />
-              <ResultsByBatterSideChart pitches={pitches} />
-            </div>
+                <div className="two-column-grid">
+                  <UsageByCountChart rows={aggregates.usage_by_count} />
+                  <ResultsByBatterSideChart
+                    rows={aggregates.results_by_batter_side}
+                  />
+                </div>
 
-            <ScoutingReport
-              pitches={pitches}
-              totalMatches={totalMatches}
-              pitcherName={selectedPitcher?.player_name ?? null}
-              activePlaylist={activePlaylist}
-            />
+                <ScoutingReport
+                  metrics={aggregates.report}
+                  totalMatches={aggregates.total}
+                  pitcherId={selectedPitcherId}
+                  pitcherName={selectedPitcher?.player_name ?? null}
+                  activePlaylist={activePlaylist}
+                />
+              </>
+            ) : aggregateLoading ? (
+              <section className="panel">
+                <div className="empty-state" role="status">
+                  <strong>Calculating full-result summaries…</strong>
+                  <span>
+                    PostgreSQL is aggregating every pitch that matches the
+                    current filters.
+                  </span>
+                </div>
+              </section>
+            ) : null}
           </div>
         </div>
       </main>

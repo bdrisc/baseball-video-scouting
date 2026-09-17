@@ -28,6 +28,7 @@ def client(scripted_connection_factory):
         ("/pitches?balls=4", "query.balls"),
         ("/pitches?min_velocity=96&max_velocity=90", "query"),
         ("/pitches?start_date=2026-08-31&end_date=2026-08-01", "query"),
+        ("/pitches/aggregates?limit=100", "query.limit"),
         ("/pitches/not-a-pitch-id", "path.pitch_id"),
     ],
 )

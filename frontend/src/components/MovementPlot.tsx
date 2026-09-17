@@ -113,7 +113,7 @@ export default function MovementPlot({
           <p className="eyebrow">Pitch shape</p>
           <h2>Movement profile</h2>
         </div>
-        <span className="result-count">{chartPitches.length} pitches</span>
+        <span className="result-count">{chartPitches.length} page pitches</span>
       </div>
       {chartPitches.length ? (
         <div className="plot-container tall-plot">
@@ -129,11 +129,14 @@ export default function MovementPlot({
       ) : (
         <div className="empty-state chart-empty">
           <strong>No movement data</strong>
-          <span>No loaded pitches contain horizontal and vertical break.</span>
+          <span>
+            No pitches on this table page contain horizontal and vertical break.
+          </span>
         </div>
       )}
       <p className="chart-caption">
-        Savant movement converted from feet to inches. Click a pitch to select it.
+        Current table page with Savant movement converted from feet to inches.
+        Click a pitch to select it.
       </p>
     </section>
   );

@@ -2,58 +2,39 @@ import { useMemo } from "react";
 import Plot from "react-plotly.js";
 import type { Data, Layout } from "plotly.js";
 
-import type { Pitch } from "../types/api";
+import type { VelocityByInningAggregate } from "../types/api";
 import {
   baseLayout,
-  groupByPitchType,
   pitchColor,
   plotConfig,
 } from "./chartHelpers";
 
 interface VelocityByInningChartProps {
-  pitches: Pitch[];
+  rows: VelocityByInningAggregate[];
 }
 
-export default function VelocityByInningChart({
-  pitches,
-}: VelocityByInningChartProps) {
-  const validPitches = useMemo(
-    () =>
-      pitches.filter(
-        (pitch) => pitch.inning !== null && pitch.velocity !== null,
-      ),
-    [pitches],
-  );
-
+export default function VelocityByInningChart({ rows }: VelocityByInningChartProps) {
   const data = useMemo<Data[]>(
-    () =>
-      [...groupByPitchType(validPitches)].map(([pitchType, group]) => {
-        const innings = new Map<number, number[]>();
-        group.forEach((pitch) => {
-          const inning = pitch.inning as number;
-          const velocities = innings.get(inning) ?? [];
-          velocities.push(pitch.velocity as number);
-          innings.set(inning, velocities);
-        });
-        const points = [...innings.entries()].sort((a, b) => a[0] - b[0]);
-
+    () => {
+      const pitchTypes = [...new Set(rows.map((row) => row.pitch_type))];
+      return pitchTypes.map((pitchType) => {
+        const points = rows.filter((row) => row.pitch_type === pitchType);
         return {
           type: "scatter",
           mode: "lines+markers",
           name: pitchType,
-          x: points.map(([inning]) => inning),
-          y: points.map(([, velocities]) =>
-            velocities.reduce((sum, value) => sum + value, 0) / velocities.length,
-          ),
-          customdata: points.map(([, velocities]) => velocities.length),
+          x: points.map((row) => row.inning),
+          y: points.map((row) => row.average_velocity),
+          customdata: points.map((row) => row.pitch_count),
           line: { color: pitchColor(pitchType), width: 2 },
           marker: { color: pitchColor(pitchType), size: 7 },
           hovertemplate:
             `${pitchType}<br>Inning %{x}<br>Average: %{y:.1f} mph<br>` +
             "%{customdata} pitches<extra></extra>",
         };
-      }),
-    [validPitches],
+      });
+    },
+    [rows],
   );
 
   const layout = useMemo<Partial<Layout>>(
@@ -85,7 +66,7 @@ export default function VelocityByInningChart({
         </div>
         <span className="result-count">Average</span>
       </div>
-      {validPitches.length ? (
+      {rows.length ? (
         <div className="plot-container summary-plot">
           <Plot
             data={data}
@@ -102,7 +83,8 @@ export default function VelocityByInningChart({
         </div>
       )}
       <p className="chart-caption">
-        Each point is the average velocity for that pitch type and inning.
+        Each point uses the complete filtered result for that pitch type and
+        inning.
       </p>
     </section>
   );

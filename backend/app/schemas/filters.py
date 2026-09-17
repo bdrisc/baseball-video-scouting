@@ -25,8 +25,8 @@ class SortOrder(str, Enum):
     DESCENDING = "desc"
 
 
-class PitchFilters(BaseModel):
-    """Every supported filter for GET /pitches."""
+class PitchFilterCriteria(BaseModel):
+    """Filters shared by pitch rows and full-result aggregate summaries."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -46,10 +46,6 @@ class PitchFilters(BaseModel):
     min_plate_z: float | None = Field(default=None, ge=-2, le=8)
     max_plate_z: float | None = Field(default=None, ge=-2, le=8)
     video_available: bool | None = None
-    limit: int = Field(default=100, ge=1, le=500)
-    offset: int = Field(default=0, ge=0)
-    sort_by: PitchSortField = PitchSortField.GAME_DATE
-    sort_order: SortOrder = SortOrder.ASCENDING
 
     @field_validator("pitch_type", mode="before")
     @classmethod
@@ -65,13 +61,6 @@ class PitchFilters(BaseModel):
             return value.strip().upper()
         return value
 
-    @field_validator("sort_by", "sort_order", mode="before")
-    @classmethod
-    def normalize_sort_value(cls, value: object) -> object:
-        if isinstance(value, str):
-            return value.strip().lower()
-        return value
-
     @field_validator("result")
     @classmethod
     def normalize_result(cls, value: str | None) -> str | None:
@@ -83,7 +72,7 @@ class PitchFilters(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def validate_ranges(self) -> "PitchFilters":
+    def validate_ranges(self) -> "PitchFilterCriteria":
         pairs = (
             ("min_velocity", self.min_velocity, "max_velocity", self.max_velocity),
             ("min_plate_x", self.min_plate_x, "max_plate_x", self.max_plate_x),
@@ -101,3 +90,23 @@ class PitchFilters(BaseModel):
             raise ValueError("start_date cannot be after end_date")
 
         return self
+
+
+class PitchAggregateFilters(PitchFilterCriteria):
+    """Validated filters for GET /pitches/aggregates."""
+
+
+class PitchFilters(PitchFilterCriteria):
+    """Validated filters, pagination, and sorting for GET /pitches."""
+
+    limit: int = Field(default=100, ge=1, le=500)
+    offset: int = Field(default=0, ge=0)
+    sort_by: PitchSortField = PitchSortField.GAME_DATE
+    sort_order: SortOrder = SortOrder.ASCENDING
+
+    @field_validator("sort_by", "sort_order", mode="before")
+    @classmethod
+    def normalize_sort_value(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value

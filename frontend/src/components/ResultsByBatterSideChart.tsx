@@ -2,14 +2,24 @@ import { useMemo } from "react";
 import Plot from "react-plotly.js";
 import type { Data, Layout } from "plotly.js";
 
-import type { Pitch } from "../types/api";
+import type {
+  BatterSideResultAggregate,
+  ResultGroup,
+} from "../types/api";
 import { baseLayout, plotConfig } from "./chartHelpers";
 
 interface ResultsByBatterSideChartProps {
-  pitches: Pitch[];
+  rows: BatterSideResultAggregate[];
 }
 
-const RESULT_GROUPS = ["Ball", "Called strike", "Whiff", "Foul", "In play", "Other"];
+const RESULT_GROUPS: ResultGroup[] = [
+  "Ball",
+  "Called strike",
+  "Whiff",
+  "Foul",
+  "In play",
+  "Other",
+];
 const RESULT_COLORS: Record<string, string> = {
   Ball: "#9ba5ae",
   "Called strike": "#3676b8",
@@ -19,58 +29,32 @@ const RESULT_COLORS: Record<string, string> = {
   Other: "#725d78",
 };
 
-function resultGroup(description: string | null): string {
-  if (!description) return "Other";
-  if (["swinging_strike", "swinging_strike_blocked", "missed_bunt"].includes(description)) {
-    return "Whiff";
-  }
-  if (description === "called_strike") return "Called strike";
-  if (description.includes("foul")) return "Foul";
-  if (description.startsWith("hit_into_play") || description.startsWith("in_play")) {
-    return "In play";
-  }
-  if (description === "ball" || description === "blocked_ball" || description === "pitchout") {
-    return "Ball";
-  }
-  return "Other";
-}
-
 export default function ResultsByBatterSideChart({
-  pitches,
+  rows,
 }: ResultsByBatterSideChartProps) {
-  const validPitches = useMemo(
-    () => pitches.filter((pitch) => pitch.batter_side === "L" || pitch.batter_side === "R"),
-    [pitches],
-  );
-
   const data = useMemo<Data[]>(() => {
     const sides: Array<"L" | "R"> = ["L", "R"];
-    const totals = sides.map(
-      (side) => validPitches.filter((pitch) => pitch.batter_side === side).length,
-    );
 
     return RESULT_GROUPS.map((group) => {
-      const counts = sides.map(
-        (side) =>
-          validPitches.filter(
-            (pitch) =>
-              pitch.batter_side === side && resultGroup(pitch.description) === group,
-          ).length,
+      const matches = sides.map((side) =>
+        rows.find(
+          (row) => row.batter_side === side && row.result_group === group,
+        ),
       );
       return {
         type: "bar",
         name: group,
         x: ["Left-handed", "Right-handed"],
-        y: counts.map((count, index) =>
-          totals[index] ? (count / totals[index]) * 100 : 0,
-        ),
-        customdata: counts,
+        y: matches.map((row) => row?.percentage ?? 0),
+        customdata: matches.map((row) => row?.pitch_count ?? 0),
         marker: { color: RESULT_COLORS[group] },
         hovertemplate:
           `${group}<br>%{x}<br>%{y:.1f}% · %{customdata} pitches<extra></extra>`,
       };
     });
-  }, [validPitches]);
+  }, [rows]);
+
+  const total = rows.reduce((sum, row) => sum + row.pitch_count, 0);
 
   const layout = useMemo<Partial<Layout>>(
     () => ({
@@ -96,9 +80,9 @@ export default function ResultsByBatterSideChart({
           <p className="eyebrow">Handedness splits</p>
           <h2>Results by batter side</h2>
         </div>
-        <span className="result-count">{validPitches.length} pitches</span>
+        <span className="result-count">{total} pitches</span>
       </div>
-      {validPitches.length ? (
+      {total ? (
         <div className="plot-container summary-plot">
           <Plot
             data={data}
@@ -115,7 +99,8 @@ export default function ResultsByBatterSideChart({
         </div>
       )}
       <p className="chart-caption">
-        Result categories are shown as a percentage of pitches to each side.
+        Result categories use the complete filtered result and are shown as a
+        percentage of pitches to each side.
       </p>
     </section>
   );

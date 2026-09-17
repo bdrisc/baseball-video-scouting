@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createPlaylist, getPitches } from "./api";
+import { createPlaylist, getPitchAggregates, getPitches } from "./api";
 import type { PitchSearchFilters } from "../types/api";
 
 function mockJsonResponse(body: unknown, status = 200): Response {
@@ -87,6 +87,47 @@ describe("API service", () => {
         sort_order: "asc",
       }),
     ).rejects.toThrow("Pitcher 999 was not found.");
+  });
+
+  it("requests aggregates without table pagination or sorting", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      mockJsonResponse({
+        total: 0,
+        summary: {},
+        pitch_usage: [],
+        velocity_by_inning: [],
+        usage_by_count: [],
+        results_by_batter_side: [],
+        report: {},
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getPitchAggregates({
+      pitcher_id: 7,
+      game_pk: null,
+      batter_side: "R",
+      pitch_type: "SL",
+      balls: null,
+      strikes: null,
+      result: "",
+      min_velocity: null,
+      max_velocity: null,
+      min_plate_x: null,
+      max_plate_x: null,
+      min_plate_z: null,
+      max_plate_z: null,
+      video_available: null,
+    });
+
+    const requestUrl = String(fetchMock.mock.calls[0][0]);
+    expect(requestUrl).toContain("/pitches/aggregates?");
+    expect(requestUrl).toContain("pitcher_id=7");
+    expect(requestUrl).toContain("batter_side=R");
+    expect(requestUrl).toContain("pitch_type=SL");
+    expect(requestUrl).not.toContain("limit=");
+    expect(requestUrl).not.toContain("offset=");
+    expect(requestUrl).not.toContain("sort_by=");
   });
 
   it("creates a playlist with JSON and the POST method", async () => {

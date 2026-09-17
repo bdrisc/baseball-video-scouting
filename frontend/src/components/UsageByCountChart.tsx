@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import Plot from "react-plotly.js";
 import type { Data, Layout } from "plotly.js";
 
-import type { Pitch } from "../types/api";
-import { baseLayout, groupByPitchType, plotConfig } from "./chartHelpers";
+import type { UsageByCountAggregate } from "../types/api";
+import { baseLayout, plotConfig } from "./chartHelpers";
 
 interface UsageByCountChartProps {
-  pitches: Pitch[];
+  rows: UsageByCountAggregate[];
 }
 
 const COUNT_ORDER = [
@@ -24,33 +24,39 @@ const COUNT_ORDER = [
   "3-2",
 ];
 
-export default function UsageByCountChart({ pitches }: UsageByCountChartProps) {
-  const pitchTypes = useMemo(
-    () => [...groupByPitchType(pitches)].map(([pitchType]) => pitchType),
-    [pitches],
-  );
-
-  const data = useMemo<Data[]>(() => {
-    const countTotals = new Map<string, number>();
-    pitches.forEach((pitch) => {
-      const count = `${pitch.balls}-${pitch.strikes}`;
-      countTotals.set(count, (countTotals.get(count) ?? 0) + 1);
-    });
-
-    const counts = pitchTypes.map((pitchType) =>
-      COUNT_ORDER.map(
-        (count) =>
-          pitches.filter(
-            (pitch) =>
-              pitch.pitch_type === pitchType &&
-              `${pitch.balls}-${pitch.strikes}` === count,
-          ).length,
+export default function UsageByCountChart({ rows }: UsageByCountChartProps) {
+  const pitchTypes = useMemo(() => {
+    const totals = new Map<string, number>();
+    rows.forEach((row) =>
+      totals.set(
+        row.pitch_type,
+        (totals.get(row.pitch_type) ?? 0) + row.pitch_count,
       ),
     );
-    const percentages = counts.map((row) =>
-      row.map((count, index) => {
-        const total = countTotals.get(COUNT_ORDER[index]) ?? 0;
-        return total ? (count / total) * 100 : 0;
+    return [...totals.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([pitchType]) => pitchType);
+  }, [rows]);
+
+  const data = useMemo<Data[]>(() => {
+    const counts = pitchTypes.map((pitchType) =>
+      COUNT_ORDER.map((count) => {
+        const row = rows.find(
+          (candidate) =>
+            candidate.pitch_type === pitchType &&
+            `${candidate.balls}-${candidate.strikes}` === count,
+        );
+        return row?.pitch_count ?? 0;
+      }),
+    );
+    const percentages = pitchTypes.map((pitchType) =>
+      COUNT_ORDER.map((count) => {
+        const row = rows.find(
+          (candidate) =>
+            candidate.pitch_type === pitchType &&
+            `${candidate.balls}-${candidate.strikes}` === count,
+        );
+        return row?.usage_percent ?? 0;
       }),
     );
 
@@ -78,7 +84,7 @@ export default function UsageByCountChart({ pitches }: UsageByCountChartProps) {
         colorbar: { title: { text: "%" }, thickness: 10, len: 0.8 },
       },
     ];
-  }, [pitches, pitchTypes]);
+  }, [pitchTypes, rows]);
 
   const layout = useMemo<Partial<Layout>>(
     () => ({
@@ -99,7 +105,7 @@ export default function UsageByCountChart({ pitches }: UsageByCountChartProps) {
         </div>
         <span className="result-count">Column %</span>
       </div>
-      {pitches.length && pitchTypes.length ? (
+      {rows.length && pitchTypes.length ? (
         <div className="plot-container summary-plot">
           <Plot
             data={data}
@@ -116,7 +122,8 @@ export default function UsageByCountChart({ pitches }: UsageByCountChartProps) {
         </div>
       )}
       <p className="chart-caption">
-        Each column shows pitch-type usage within that count.
+        Each column shows pitch-type usage within that count across the complete
+        filtered result.
       </p>
     </section>
   );
