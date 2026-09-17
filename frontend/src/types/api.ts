@@ -108,6 +108,125 @@ export interface PitchSearchFilters {
   sort_order: SortOrder;
 }
 
+export type PitchAggregateFilters = Omit<
+  PitchSearchFilters,
+  "limit" | "offset" | "sort_by" | "sort_order"
+>;
+
+export interface PitchAggregateSummary {
+  total_pitches: number;
+  average_velocity: number | null;
+  whiffs: number;
+  videos_available: number;
+  pitch_types: number;
+}
+
+export interface PitchUsageAggregate {
+  pitch_type: string;
+  pitch_count: number;
+  usage_percent: number;
+}
+
+export interface VelocityByInningAggregate {
+  pitch_type: string;
+  inning: number;
+  pitch_count: number;
+  average_velocity: number;
+}
+
+export interface UsageByCountAggregate {
+  pitch_type: string;
+  balls: number;
+  strikes: number;
+  pitch_count: number;
+  usage_percent: number;
+}
+
+export type ResultGroup =
+  | "Ball"
+  | "Called strike"
+  | "Whiff"
+  | "Foul"
+  | "In play"
+  | "Other";
+
+export interface BatterSideResultAggregate {
+  batter_side: "L" | "R";
+  result_group: ResultGroup;
+  pitch_count: number;
+  percentage: number;
+}
+
+export interface ArsenalAggregate {
+  pitch_type: string;
+  count: number;
+  usage: number;
+  average_velocity: number | null;
+  average_spin: number | null;
+  horizontal_break: number | null;
+  vertical_break: number | null;
+  whiff_rate: number | null;
+  zone_rate: number | null;
+}
+
+export interface CountTendencyAggregate {
+  label: string;
+  sample_size: number;
+  top_pitch: string;
+  usage: number | null;
+}
+
+export interface HandednessAggregate {
+  side: "L" | "R";
+  count: number;
+  pitch_mix: Array<{
+    pitch_type: string;
+    usage: number;
+  }>;
+  whiff_rate: number | null;
+  zone_rate: number | null;
+}
+
+export interface ReportAggregate {
+  arsenal: ArsenalAggregate[];
+  usage_summary: string;
+  count_tendencies: CountTendencyAggregate[];
+  handedness: HandednessAggregate[];
+  location: {
+    sample_size: number;
+    zone_rate: number | null;
+    primary_vertical_band: string;
+    primary_horizontal_lane: string;
+    fastball_elevated_rate: number | null;
+  };
+  putaway: {
+    sample_size: number;
+    top_pitch: string;
+    top_pitch_usage: number | null;
+    whiff_rate: number | null;
+    strikeouts: number;
+    best_whiff_pitch: string;
+  };
+  damage: {
+    balls_in_play: number;
+    average_exit_velocity: number | null;
+    hard_hit_rate: number | null;
+    maximum_exit_velocity: number | null;
+    home_runs: number;
+    most_damaged_pitch: string;
+  };
+}
+
+export interface PitchAggregateResponse {
+  total: number;
+  summary: PitchAggregateSummary;
+  pitch_usage: PitchUsageAggregate[];
+  velocity_by_inning: VelocityByInningAggregate[];
+  usage_by_count: UsageByCountAggregate[];
+  results_by_batter_side: BatterSideResultAggregate[];
+  report: ReportAggregate;
+}
+
 export interface PlaylistRecord {
   playlist_id: number;
   playlist_name: string;

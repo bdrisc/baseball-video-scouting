@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { Pitch, PlaylistDetail } from "../types/api";
+import type { PlaylistDetail, ReportAggregate } from "../types/api";
 import { pitchLabel } from "./chartHelpers";
-import { buildReportMetrics } from "./reportMetrics";
 
 interface ScoutingReportProps {
-  pitches: Pitch[];
+  metrics: ReportAggregate | null;
   totalMatches: number;
+  pitcherId: number | null;
   pitcherName: string | null;
   activePlaylist: PlaylistDetail | null;
 }
@@ -26,14 +26,14 @@ function signedBreak(value: number | null): string {
 }
 
 export default function ScoutingReport({
-  pitches,
+  metrics,
   totalMatches,
+  pitcherId,
   pitcherName,
   activePlaylist,
 }: ScoutingReportProps) {
-  const metrics = useMemo(() => buildReportMetrics(pitches), [pitches]);
   const observationKey = `advance-report-observations:${
-    activePlaylist?.playlist_id ?? pitches[0]?.pitcher_id ?? "general"
+    activePlaylist?.playlist_id ?? pitcherId ?? "general"
   }`;
   const [observations, setObservations] = useState("");
   const [loadedObservationKey, setLoadedObservationKey] = useState("");
@@ -77,11 +77,11 @@ export default function ScoutingReport({
           <h2>{pitcherName ? `${pitcherName} advance report` : "Advance report"}</h2>
         </div>
         <span className="result-count">
-          {pitches.length} loaded · {totalMatches} matching
+          {totalMatches} matching pitches
         </span>
       </div>
 
-      {!pitches.length ? (
+      {!metrics || totalMatches === 0 ? (
         <div className="empty-state">
           <strong>No report sample available.</strong>
           <span>Select a pitcher or broaden the pitch filters.</span>
@@ -113,21 +113,21 @@ export default function ScoutingReport({
                 </thead>
                 <tbody>
                   {metrics.arsenal.map((pitch) => (
-                    <tr key={pitch.pitchType}>
+                    <tr key={pitch.pitch_type}>
                       <td>
-                        <span className={`report-pitch-code pitch-${pitch.pitchType.toLowerCase()}`}>
-                          {pitch.pitchType}
+                        <span className={`report-pitch-code pitch-${pitch.pitch_type.toLowerCase()}`}>
+                          {pitch.pitch_type}
                         </span>
-                        {pitchLabel(pitch.pitchType)}
+                        {pitchLabel(pitch.pitch_type)}
                       </td>
                       <td>{pitch.count}</td>
                       <td>{formatPercent(pitch.usage)}</td>
-                      <td>{formatNumber(pitch.averageVelocity)}</td>
-                      <td>{formatNumber(pitch.averageSpin, 0)}</td>
-                      <td>{signedBreak(pitch.horizontalBreak)}</td>
-                      <td>{signedBreak(pitch.verticalBreak)}</td>
-                      <td>{formatPercent(pitch.whiffRate)}</td>
-                      <td>{formatPercent(pitch.zoneRate)}</td>
+                      <td>{formatNumber(pitch.average_velocity)}</td>
+                      <td>{formatNumber(pitch.average_spin, 0)}</td>
+                      <td>{signedBreak(pitch.horizontal_break)}</td>
+                      <td>{signedBreak(pitch.vertical_break)}</td>
+                      <td>{formatPercent(pitch.whiff_rate)}</td>
+                      <td>{formatPercent(pitch.zone_rate)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -140,7 +140,7 @@ export default function ScoutingReport({
               <div className="report-section-heading compact-heading">
                 <div><span>02</span><h3>Pitch usage</h3></div>
               </div>
-              <strong className="insight-lead">{metrics.usageSummary}</strong>
+              <strong className="insight-lead">{metrics.usage_summary}</strong>
               <p>{metrics.arsenal.length} pitch types represented in the current sample.</p>
             </section>
 
@@ -149,10 +149,10 @@ export default function ScoutingReport({
                 <div><span>03</span><h3>Count tendencies</h3></div>
               </div>
               <dl className="report-list">
-                {metrics.countTendencies.map((row) => (
+                {metrics.count_tendencies.map((row) => (
                   <div key={row.label}>
-                    <dt>{row.label} <small>n={row.sampleSize}</small></dt>
-                    <dd>{row.topPitch} · {formatPercent(row.usage)}</dd>
+                    <dt>{row.label} <small>n={row.sample_size}</small></dt>
+                    <dd>{row.top_pitch} · {formatPercent(row.usage)}</dd>
                   </div>
                 ))}
               </dl>
@@ -167,16 +167,16 @@ export default function ScoutingReport({
                   <div key={row.side}>
                     <dt>{row.side === "L" ? "vs. LHH" : "vs. RHH"} <small>n={row.count}</small></dt>
                     <dd>
-                      {row.pitchMix.length
-                        ? row.pitchMix
+                      {row.pitch_mix.length
+                        ? row.pitch_mix
                             .map(
                               (pitch) =>
-                                `${pitch.pitchType} ${formatPercent(pitch.usage)}`,
+                                `${pitch.pitch_type} ${formatPercent(pitch.usage)}`,
                             )
                             .join(" · ")
                         : "—"}
                       <small>
-                        Whiff% {formatPercent(row.whiffRate)} · Zone% {formatPercent(row.zoneRate)}
+                        Whiff% {formatPercent(row.whiff_rate)} · Zone% {formatPercent(row.zone_rate)}
                       </small>
                     </dd>
                   </div>
@@ -189,10 +189,10 @@ export default function ScoutingReport({
                 <div><span>05</span><h3>Location tendencies</h3></div>
               </div>
               <dl className="report-list">
-                <div><dt>Zone rate <small>n={metrics.location.sampleSize}</small></dt><dd>{formatPercent(metrics.location.zoneRate)}</dd></div>
-                <div><dt>Primary height</dt><dd>{metrics.location.primaryVerticalBand}</dd></div>
-                <div><dt>Primary lane</dt><dd>{metrics.location.primaryHorizontalLane}</dd></div>
-                <div><dt>Fastballs upper third+</dt><dd>{formatPercent(metrics.location.fastballElevatedRate)}</dd></div>
+                <div><dt>Zone rate <small>n={metrics.location.sample_size}</small></dt><dd>{formatPercent(metrics.location.zone_rate)}</dd></div>
+                <div><dt>Primary height</dt><dd>{metrics.location.primary_vertical_band}</dd></div>
+                <div><dt>Primary lane</dt><dd>{metrics.location.primary_horizontal_lane}</dd></div>
+                <div><dt>Fastballs upper third+</dt><dd>{formatPercent(metrics.location.fastball_elevated_rate)}</dd></div>
               </dl>
             </section>
 
@@ -201,9 +201,9 @@ export default function ScoutingReport({
                 <div><span>06</span><h3>Putaway approach</h3></div>
               </div>
               <dl className="report-list">
-                <div><dt>Two-strike primary <small>n={metrics.putaway.sampleSize}</small></dt><dd>{metrics.putaway.topPitch} · {formatPercent(metrics.putaway.topPitchUsage)}</dd></div>
-                <div><dt>Whiff%</dt><dd>{formatPercent(metrics.putaway.whiffRate)}</dd></div>
-                <div><dt>Best whiff pitch</dt><dd>{metrics.putaway.bestWhiffPitch}</dd></div>
+                <div><dt>Two-strike primary <small>n={metrics.putaway.sample_size}</small></dt><dd>{metrics.putaway.top_pitch} · {formatPercent(metrics.putaway.top_pitch_usage)}</dd></div>
+                <div><dt>Whiff%</dt><dd>{formatPercent(metrics.putaway.whiff_rate)}</dd></div>
+                <div><dt>Best whiff pitch</dt><dd>{metrics.putaway.best_whiff_pitch}</dd></div>
                 <div><dt>Recorded strikeouts</dt><dd>{metrics.putaway.strikeouts}</dd></div>
               </dl>
             </section>
@@ -213,10 +213,10 @@ export default function ScoutingReport({
                 <div><span>07</span><h3>Damage allowed</h3></div>
               </div>
               <dl className="report-list">
-                <div><dt>Batted balls</dt><dd>{metrics.damage.ballsInPlay}</dd></div>
-                <div><dt>Average / maximum EV</dt><dd>{formatNumber(metrics.damage.averageExitVelocity)} / {formatNumber(metrics.damage.maximumExitVelocity)}</dd></div>
-                <div><dt>Hard-hit rate (95+)</dt><dd>{formatPercent(metrics.damage.hardHitRate)}</dd></div>
-                <div><dt>Highest average-EV pitch</dt><dd>{metrics.damage.mostDamagedPitch} · {metrics.damage.homeRuns} HR</dd></div>
+                <div><dt>Batted balls</dt><dd>{metrics.damage.balls_in_play}</dd></div>
+                <div><dt>Average / maximum EV</dt><dd>{formatNumber(metrics.damage.average_exit_velocity)} / {formatNumber(metrics.damage.maximum_exit_velocity)}</dd></div>
+                <div><dt>Hard-hit rate (95+)</dt><dd>{formatPercent(metrics.damage.hard_hit_rate)}</dd></div>
+                <div><dt>Highest average-EV pitch</dt><dd>{metrics.damage.most_damaged_pitch} · {metrics.damage.home_runs} HR</dd></div>
               </dl>
             </section>
           </div>

@@ -239,9 +239,9 @@ in-application advance report. It includes:
 - A written scouting-observations field saved automatically in the browser
 - A reusable link to the active PostgreSQL video playlist
 
-Report calculations use the same pitches loaded by the search page, so every
-game or pitch filter updates the report. The heading shows both loaded rows and
-total database matches to make the analytical sample transparent.
+Report calculations come from the full-result aggregate API, so every game or
+pitch filter updates the report without limiting the analytical sample to the
+current table page. The heading shows the total number of matching pitches.
 
 Saved-playlist links use `?playlist={playlist_id}`. Opening the link reloads the
 playlist from PostgreSQL and restores its pitch order and notes. PDF export is
@@ -265,8 +265,7 @@ src/
 │   ├── ResultsByBatterSideChart.tsx
 │   ├── VideoPanel.tsx
 │   ├── PlaylistBuilder.tsx
-│   ├── ScoutingReport.tsx
-│   └── reportMetrics.ts
+│   └── ScoutingReport.tsx
 ├── pages/
 │   └── ScoutingWorkspace.tsx
 ├── services/

@@ -120,8 +120,28 @@ tie breakers prevent rows from moving between pages when the selected sort
 value is shared by multiple pitches.
 
 The React pitch table exposes page-size, previous/next, and sortable-column
-controls. Until the aggregate endpoints in the next scaling step are added,
-charts and non-total summary metrics describe the currently loaded page.
+controls.
+
+### Full-result chart aggregates
+
+`GET /pitches/aggregates` accepts the same baseball filters as `GET /pitches`,
+but intentionally does not accept `limit`, `offset`, `sort_by`, or
+`sort_order`. PostgreSQL summarizes the complete filtered result rather than a
+single table page.
+
+```text
+GET /pitches/aggregates?pitcher_id=1&start_date=2026-04-01&end_date=2026-04-30
+```
+
+The response contains overall summary cards, pitch usage, velocity by inning,
+usage by count, results by batter side, and the advance-report metrics. The
+React application requests these aggregates separately from the paginated
+pitch rows, so moving to another table page or changing table sort order does
+not change a chart summary.
+
+The strike-zone and movement plots remain page-level by design because each
+dot is a selectable pitch tied to the current table page. Their labels and
+captions explicitly identify that scope.
 
 ## Endpoints included
 
@@ -130,6 +150,7 @@ charts and non-total summary metrics describe the currently loaded page.
 - `GET /pitchers/{pitcher_id}/games`
 - `GET /pitchers/{pitcher_id}/summary`
 - `GET /pitches`
+- `GET /pitches/aggregates`
 - `GET /pitches/{pitch_id}`
 - `GET /pitches/{pitch_id}/video`
 - `POST /playlists`

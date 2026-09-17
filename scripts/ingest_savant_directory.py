@@ -49,9 +49,7 @@ def discover_csv_files(input_dir: Path, pattern: str) -> list[Path]:
         raise BatchIngestionError(f"Input directory not found: {input_dir}")
     files = sorted(path for path in input_dir.glob(pattern) if path.is_file())
     if not files:
-        raise BatchIngestionError(
-            f"No CSV files matching {pattern!r} were found in {input_dir}."
-        )
+        raise BatchIngestionError(f"No CSV files matching {pattern!r} were found in {input_dir}.")
     return files
 
 
@@ -156,9 +154,7 @@ class ImportTracker:
                 ),
             )
             if cursor.rowcount != 1:
-                raise BatchIngestionError(
-                    f"Could not mark import batch {batch_id} as succeeded."
-                )
+                raise BatchIngestionError(f"Could not mark import batch {batch_id} as succeeded.")
 
     def mark_failed(
         self,
@@ -245,9 +241,7 @@ def ingest_directory(
                 expected_season=expected_season,
             )
             if report is None:
-                raise BatchIngestionError(
-                    "The ingestion returned no database report."
-                )
+                raise BatchIngestionError("The ingestion returned no database report.")
             active_tracker.mark_succeeded(batch_id, report)
         except Exception as exc:
             message = safe_error_message(exc, database_url)
@@ -259,8 +253,7 @@ def ingest_directory(
             )
             summary.failed += 1
             print(
-                f"Failed {source_file.name}: {message} "
-                f"(recorded in import batch {batch_id})",
+                f"Failed {source_file.name}: {message} (recorded in import batch {batch_id})",
                 file=sys.stderr,
             )
             if stop_on_error:
@@ -313,8 +306,7 @@ def main() -> None:
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         print(
-            "Batch ingestion stopped: DATABASE_URL must be set in the current "
-            "PowerShell session.",
+            "Batch ingestion stopped: DATABASE_URL must be set in the current PowerShell session.",
             file=sys.stderr,
         )
         raise SystemExit(1)

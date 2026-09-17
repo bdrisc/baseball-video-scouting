@@ -2,41 +2,37 @@ import { useMemo } from "react";
 import Plot from "react-plotly.js";
 import type { Data, Layout } from "plotly.js";
 
-import type { Pitch } from "../types/api";
+import type { PitchUsageAggregate } from "../types/api";
 import {
   baseLayout,
-  groupByPitchType,
   pitchColor,
   pitchLabel,
   plotConfig,
 } from "./chartHelpers";
 
 interface PitchUsageChartProps {
-  pitches: Pitch[];
+  rows: PitchUsageAggregate[];
 }
 
-export default function PitchUsageChart({ pitches }: PitchUsageChartProps) {
+export default function PitchUsageChart({ rows }: PitchUsageChartProps) {
   const data = useMemo<Data[]>(() => {
-    const groups = [...groupByPitchType(pitches)];
     return [
       {
         type: "bar",
-        x: groups.map(([pitchType]) => pitchType),
-        y: groups.map(([, group]) => (group.length / pitches.length) * 100),
-        customdata: groups.map(([, group]) => group.length),
-        text: groups.map(
-          ([, group]) => `${((group.length / pitches.length) * 100).toFixed(1)}%`,
-        ),
+        x: rows.map((row) => row.pitch_type),
+        y: rows.map((row) => row.usage_percent),
+        customdata: rows.map((row) => row.pitch_count),
+        text: rows.map((row) => `${row.usage_percent.toFixed(1)}%`),
         textposition: "outside",
         cliponaxis: false,
         marker: {
-          color: groups.map(([pitchType]) => pitchColor(pitchType)),
+          color: rows.map((row) => pitchColor(row.pitch_type)),
         },
         hovertemplate:
           "%{x}: %{y:.1f}%<br>%{customdata} pitches<extra></extra>",
       },
     ];
-  }, [pitches]);
+  }, [rows]);
 
   const layout = useMemo<Partial<Layout>>(
     () => ({
@@ -61,9 +57,11 @@ export default function PitchUsageChart({ pitches }: PitchUsageChartProps) {
           <p className="eyebrow">Arsenal</p>
           <h2>Pitch usage</h2>
         </div>
-        <span className="result-count">{pitches.length} pitches</span>
+        <span className="result-count">
+          {rows.reduce((total, row) => total + row.pitch_count, 0)} pitches
+        </span>
       </div>
-      {pitches.length ? (
+      {rows.length ? (
         <div className="plot-container summary-plot">
           <Plot
             data={data}
@@ -80,11 +78,14 @@ export default function PitchUsageChart({ pitches }: PitchUsageChartProps) {
         </div>
       )}
       <p className="chart-caption">
-        {pitches.length
-          ? [...groupByPitchType(pitches)]
-              .map(([pitchType]) => `${pitchType} · ${pitchLabel(pitchType)}`)
+        {rows.length
+          ? rows
+              .map(
+                (row) =>
+                  `${row.pitch_type} · ${pitchLabel(row.pitch_type)}`,
+              )
               .join("  |  ")
-          : "Usage reflects the currently loaded pitches."}
+          : "Usage reflects the complete filtered result."}
       </p>
     </section>
   );

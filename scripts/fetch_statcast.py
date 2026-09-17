@@ -43,9 +43,7 @@ def parse_iso_date(value: str) -> date:
     try:
         return datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(
-            f"{value!r} is not a valid date; use YYYY-MM-DD."
-        ) from exc
+        raise argparse.ArgumentTypeError(f"{value!r} is not a valid date; use YYYY-MM-DD.") from exc
 
 
 def iter_dates(start_date: date, end_date: date) -> Iterator[date]:
@@ -77,8 +75,7 @@ def validate_day(data: pd.DataFrame, expected_date: date) -> pd.DataFrame:
     missing = sorted(REQUIRED_COLUMNS - set(data.columns))
     if missing:
         raise DownloadError(
-            "The Statcast response is missing required columns: "
-            + ", ".join(missing)
+            "The Statcast response is missing required columns: " + ", ".join(missing)
         )
 
     normalized = data.copy()
@@ -108,8 +105,7 @@ def validate_day(data: pd.DataFrame, expected_date: date) -> pd.DataFrame:
         )
         if conflicting.any():
             raise DownloadError(
-                f"The Statcast response contains {int(conflicting.sum()):,} "
-                "conflicting pitch keys."
+                f"The Statcast response contains {int(conflicting.sum()):,} conflicting pitch keys."
             )
         normalized = normalized.drop_duplicates(PITCH_KEY, keep="last")
 

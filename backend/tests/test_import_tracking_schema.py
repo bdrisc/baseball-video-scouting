@@ -6,9 +6,7 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = REPOSITORY_ROOT / "database" / "schema.sql"
-MIGRATION_PATH = (
-    REPOSITORY_ROOT / "database" / "migrations" / "002_import_batch_logging.sql"
-)
+MIGRATION_PATH = REPOSITORY_ROOT / "database" / "migrations" / "002_import_batch_logging.sql"
 
 
 def read_sql(path: Path) -> str:

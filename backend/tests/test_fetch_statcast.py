@@ -114,9 +114,7 @@ def test_rejects_response_from_wrong_date(tmp_path: Path) -> None:
             requested_date,
             tmp_path,
             retries=1,
-            fetcher=lambda game_date: pd.DataFrame(
-                [statcast_row(date(2026, 7, 2))]
-            ),
+            fetcher=lambda game_date: pd.DataFrame([statcast_row(date(2026, 7, 2))]),
             sleep=lambda seconds: None,
         )
 

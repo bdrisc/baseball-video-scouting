@@ -139,7 +139,7 @@ export default function StrikeZonePlot({
           <p className="eyebrow">Location</p>
           <h2>Strike zone</h2>
         </div>
-        <span className="result-count">{chartPitches.length} pitches</span>
+        <span className="result-count">{chartPitches.length} page pitches</span>
       </div>
       {chartPitches.length ? (
         <div className="plot-container tall-plot">
@@ -155,11 +155,12 @@ export default function StrikeZonePlot({
       ) : (
         <div className="empty-state chart-empty">
           <strong>No location data</strong>
-          <span>No loaded pitches contain plate coordinates.</span>
+          <span>No pitches on this table page contain plate coordinates.</span>
         </div>
       )}
       <p className="chart-caption">
-        Catcher-view Savant coordinates. Click a pitch to select its table row.
+        Current table page in catcher-view Savant coordinates. Click a pitch to
+        select its table row.
       </p>
     </section>
   );
