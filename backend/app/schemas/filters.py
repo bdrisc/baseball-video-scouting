@@ -25,6 +25,41 @@ class SortOrder(str, Enum):
     DESCENDING = "desc"
 
 
+class ThrowingHand(str, Enum):
+    LEFT = "L"
+    RIGHT = "R"
+
+
+class PitcherSearchFilters(BaseModel):
+    """Validated discovery filters for season-wide pitcher search."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    q: str | None = Field(default=None, min_length=1, max_length=100)
+    season: int | None = Field(default=None, ge=1876, le=2200)
+    team_id: int | None = Field(default=None, gt=0)
+    throws: ThrowingHand | None = None
+    limit: int = Field(default=25, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+
+    @field_validator("q")
+    @classmethod
+    def normalize_query(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = " ".join(value.split())
+        if not value:
+            raise ValueError("q cannot be blank")
+        return value
+
+    @field_validator("throws", mode="before")
+    @classmethod
+    def normalize_throwing_hand(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().upper()
+        return value
+
+
 class PitchFilterCriteria(BaseModel):
     """Filters shared by pitch rows and full-result aggregate summaries."""
 
@@ -32,6 +67,8 @@ class PitchFilterCriteria(BaseModel):
 
     pitcher_id: int | None = Field(default=None, gt=0)
     game_pk: int | None = Field(default=None, gt=0)
+    season: int | None = Field(default=None, ge=1876, le=2200)
+    team_id: int | None = Field(default=None, gt=0)
     pitch_type: PitchType | None = None
     balls: int | None = Field(default=None, ge=0, le=3)
     strikes: int | None = Field(default=None, ge=0, le=2)

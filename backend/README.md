@@ -143,10 +143,34 @@ The strike-zone and movement plots remain page-level by design because each
 dot is a selectable pitch tied to the current table page. Their labels and
 captions explicitly identify that scope.
 
+### Season, team, and pitcher discovery
+
+The season-wide workspace discovers its available scope from PostgreSQL rather
+than hard-coding a roster:
+
+```text
+GET /seasons
+GET /teams?season=2026
+GET /pitchers/search?q=messick&season=2026&team_id=1&limit=25&offset=0
+```
+
+`GET /pitchers/search` performs parameterized, indexed name matching and
+returns `total`, pagination metadata, and the current pitcher page. The
+optional `season`, `team_id`, and `throws` filters are applied by PostgreSQL.
+Team assignment is derived from the game's home/away teams and inning half,
+so the selected team represents the pitcher's fielding team for that pitch.
+
+The same `season` and `team_id` scope is accepted by `GET /pitches`,
+`GET /pitches/aggregates`, and `GET /pitchers/{pitcher_id}/games`. This keeps
+the roster, game list, table rows, and chart aggregates aligned.
+
 ## Endpoints included
 
 - `GET /health`
+- `GET /seasons`
+- `GET /teams`
 - `GET /pitchers`
+- `GET /pitchers/search`
 - `GET /pitchers/{pitcher_id}/games`
 - `GET /pitchers/{pitcher_id}/summary`
 - `GET /pitches`

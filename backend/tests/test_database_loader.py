@@ -9,12 +9,14 @@ from scripts.load_database import (
     GAME_UPSERT_SQL,
     PITCH_UPSERT_SQL,
     PLAYER_UPSERT_SQL,
+    TEAM_UPSERT_SQL,
     VIDEO_UPSERT_SQL,
     LoaderError,
     load_cleaned_csv,
     prepare_games,
     prepare_pitches,
     prepare_players,
+    prepare_teams,
     prepare_videos,
 )
 
@@ -93,11 +95,16 @@ def test_cleaned_rows_map_to_relational_parent_and_child_records() -> None:
     data["game_date"] = pd.to_datetime(data["game_date"]).dt.date
 
     players = prepare_players(data)
-    games = prepare_games(data)
+    teams = prepare_teams(data)
+    games = prepare_games(data, {"CLE": 1, "CWS": 2})
     pitches = prepare_pitches(data, {800048: 10, 700001: 11})
     videos = prepare_videos(data)
 
     assert {record["mlb_id"] for record in players} == {800048, 700001}
+    assert teams == [
+        {"team_code": "CLE", "team_name": None},
+        {"team_code": "CWS", "team_name": None},
+    ]
     assert games == [
         {
             "game_pk": 824566,
@@ -105,6 +112,8 @@ def test_cleaned_rows_map_to_relational_parent_and_child_records() -> None:
             "game_type": "R",
             "home_team": "CLE",
             "away_team": "CWS",
+            "home_team_id": 1,
+            "away_team_id": 2,
         }
     ]
     assert pitches[0]["pitcher_id"] == 10
@@ -128,9 +137,16 @@ def test_loader_rejects_duplicate_pitch_ids(tmp_path) -> None:
 
 
 def test_upserts_are_parameterized_and_idempotent() -> None:
-    statements = [PLAYER_UPSERT_SQL, GAME_UPSERT_SQL, PITCH_UPSERT_SQL, VIDEO_UPSERT_SQL]
+    statements = [
+        PLAYER_UPSERT_SQL,
+        TEAM_UPSERT_SQL,
+        GAME_UPSERT_SQL,
+        PITCH_UPSERT_SQL,
+        VIDEO_UPSERT_SQL,
+    ]
 
     assert all("ON CONFLICT" in statement for statement in statements)
     assert "%(pitch_id)s" in PITCH_UPSERT_SQL
     assert "%(video_url)s" in VIDEO_UPSERT_SQL
     assert "ON CONFLICT (mlb_id)" in PLAYER_UPSERT_SQL
+    assert "ON CONFLICT (team_code)" in TEAM_UPSERT_SQL
