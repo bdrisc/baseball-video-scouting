@@ -10,6 +10,7 @@ import PitchUsageChart from "../components/PitchUsageChart";
 import PlaylistBuilder from "../components/PlaylistBuilder";
 import ResultsByBatterSideChart from "../components/ResultsByBatterSideChart";
 import ScoutingReport from "../components/ScoutingReport";
+import ScopeSelectors from "../components/ScopeSelectors";
 import StrikeZonePlot from "../components/StrikeZonePlot";
 import SummaryStats from "../components/SummaryStats";
 import UsageByCountChart from "../components/UsageByCountChart";
@@ -21,9 +22,11 @@ import {
   getHealth,
   getPitchAggregates,
   getPitcherGames,
-  getPitchers,
   getPitches,
+  getSeasons,
+  getTeams,
   READ_ONLY_MODE,
+  searchPitchers,
 } from "../services/api";
 import type {
   Game,
@@ -34,12 +37,21 @@ import type {
   PitchSearchFilters,
   PitchSortField,
   PlaylistDetail,
+  SeasonSummary,
   SortOrder,
+  TeamSummary,
 } from "../types/api";
 
 type EditableFilters = Omit<
   PitchSearchFilters,
-  "pitcher_id" | "game_pk" | "limit" | "offset" | "sort_by" | "sort_order"
+  | "pitcher_id"
+  | "game_pk"
+  | "season"
+  | "team_id"
+  | "limit"
+  | "offset"
+  | "sort_by"
+  | "sort_order"
 >;
 
 const DEFAULT_PAGE_SIZE = 500;
@@ -61,7 +73,16 @@ const defaultFilters: EditableFilters = {
 
 export default function ScoutingWorkspace() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [seasons, setSeasons] = useState<SeasonSummary[]>([]);
+  const [teams, setTeams] = useState<TeamSummary[]>([]);
   const [pitchers, setPitchers] = useState<Pitcher[]>([]);
+  const [pitcherTotal, setPitcherTotal] = useState(0);
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [pitcherQuery, setPitcherQuery] = useState("");
+  const debouncedPitcherQuery = useDebouncedValue(pitcherQuery, 300);
+  const [selectedPitcher, setSelectedPitcher] = useState<Pitcher | null>(null);
+  const selectedPitcherId = selectedPitcher?.player_id ?? null;
   const [games, setGames] = useState<Game[]>([]);
   const [pitches, setPitches] = useState<Pitch[]>([]);
   const [aggregates, setAggregates] = useState<PitchAggregateResponse | null>(
@@ -75,7 +96,6 @@ export default function ScoutingWorkspace() {
   const [filters, setFilters] = useState<EditableFilters>(defaultFilters);
   const debouncedFilters = useDebouncedValue(filters, 300);
   const [stagedPitches, setStagedPitches] = useState<Pitch[]>([]);
-  const [selectedPitcherId, setSelectedPitcherId] = useState<number | null>(null);
   const [selectedGamePk, setSelectedGamePk] = useState<number | null>(null);
   const [selectedPitch, setSelectedPitch] = useState<Pitch | null>(null);
   const [scoutingNotes, setScoutingNotes] = useState<Record<string, string>>({});
@@ -86,16 +106,25 @@ export default function ScoutingWorkspace() {
     return Number.isInteger(value) && value > 0 ? value : null;
   });
   const [initialLoading, setInitialLoading] = useState(true);
+  const [scopeLoading, setScopeLoading] = useState(false);
+  const [pitcherSearchLoading, setPitcherSearchLoading] = useState(false);
   const [gamesLoading, setGamesLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [aggregateLoading, setAggregateLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [aggregateError, setAggregateError] = useState<string | null>(null);
+  const [pitcherSearchError, setPitcherSearchError] = useState<string | null>(null);
 
   useEffect(() => {
     setPageOffset(0);
-  }, [debouncedFilters, selectedGamePk, selectedPitcherId]);
+  }, [
+    debouncedFilters,
+    selectedGamePk,
+    selectedPitcherId,
+    selectedSeason,
+    selectedTeamId,
+  ]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -105,16 +134,13 @@ export default function ScoutingWorkspace() {
       setError(null);
 
       try {
-        const [healthResponse, pitcherResponse] = await Promise.all([
+        const [healthResponse, seasonResponse] = await Promise.all([
           getHealth(controller.signal),
-          getPitchers(controller.signal),
+          getSeasons(controller.signal),
         ]);
         setHealth(healthResponse);
-        setPitchers(pitcherResponse);
-
-        if (pitcherResponse.length === 1) {
-          setSelectedPitcherId(pitcherResponse[0].player_id);
-        }
+        setSeasons(seasonResponse);
+        setSelectedSeason(seasonResponse[0]?.season ?? null);
       } catch (requestError) {
         if (!controller.signal.aborted) {
           setError(
@@ -137,6 +163,72 @@ export default function ScoutingWorkspace() {
   useEffect(() => {
     const controller = new AbortController();
 
+    async function loadTeams() {
+      setScopeLoading(true);
+      try {
+        setTeams(await getTeams(selectedSeason, controller.signal));
+      } catch (requestError) {
+        if (!controller.signal.aborted) {
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Could not load teams.",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) setScopeLoading(false);
+      }
+    }
+
+    void loadTeams();
+    return () => controller.abort();
+  }, [selectedSeason]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadPitchers() {
+      setPitcherSearchLoading(true);
+      setPitcherSearchError(null);
+      try {
+        const response = await searchPitchers(
+          {
+            q: debouncedPitcherQuery,
+            season: selectedSeason,
+            team_id: selectedTeamId,
+            throws: "",
+            limit: 50,
+            offset: 0,
+          },
+          controller.signal,
+        );
+        setPitchers(response.pitchers);
+        setPitcherTotal(response.total);
+        setSelectedPitcher((currentPitcher) =>
+          response.total === 1 && currentPitcher === null
+            ? response.pitchers[0]
+            : currentPitcher,
+        );
+      } catch (requestError) {
+        if (!controller.signal.aborted) {
+          setPitcherSearchError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Could not search pitchers.",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) setPitcherSearchLoading(false);
+      }
+    }
+
+    void loadPitchers();
+    return () => controller.abort();
+  }, [debouncedPitcherQuery, selectedSeason, selectedTeamId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
     if (selectedPitcherId === null) {
       setGames([]);
       setSelectedGamePk(null);
@@ -151,6 +243,7 @@ export default function ScoutingWorkspace() {
       try {
         const response = await getPitcherGames(
           selectedPitcherId as number,
+          { season: selectedSeason, team_id: selectedTeamId },
           controller.signal,
         );
         setGames(response.games);
@@ -171,7 +264,7 @@ export default function ScoutingWorkspace() {
 
     void loadGames();
     return () => controller.abort();
-  }, [selectedPitcherId]);
+  }, [selectedPitcherId, selectedSeason, selectedTeamId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -191,6 +284,8 @@ export default function ScoutingWorkspace() {
           {
             pitcher_id: selectedPitcherId as number,
             game_pk: selectedGamePk,
+            season: selectedSeason,
+            team_id: selectedTeamId,
             ...debouncedFilters,
             limit: pageLimit,
             offset: pageOffset,
@@ -232,6 +327,8 @@ export default function ScoutingWorkspace() {
     pageOffset,
     selectedGamePk,
     selectedPitcherId,
+    selectedSeason,
+    selectedTeamId,
     sortBy,
     sortOrder,
   ]);
@@ -254,6 +351,8 @@ export default function ScoutingWorkspace() {
           {
             pitcher_id: selectedPitcherId as number,
             game_pk: selectedGamePk,
+            season: selectedSeason,
+            team_id: selectedTeamId,
             ...debouncedFilters,
           },
           controller.signal,
@@ -276,17 +375,37 @@ export default function ScoutingWorkspace() {
 
     void loadAggregates();
     return () => controller.abort();
-  }, [debouncedFilters, selectedGamePk, selectedPitcherId]);
+  }, [
+    debouncedFilters,
+    selectedGamePk,
+    selectedPitcherId,
+    selectedSeason,
+    selectedTeamId,
+  ]);
 
-  const selectedPitcher =
-    pitchers.find((pitcher) => pitcher.player_id === selectedPitcherId) ?? null;
-
-  function handlePitcherChange(pitcherId: number | null) {
-    setSelectedPitcherId(pitcherId);
+  function handlePitcherChange(pitcher: Pitcher | null) {
+    setSelectedPitcher(pitcher);
     setSelectedGamePk(null);
     setSelectedPitch(null);
     setFilters(defaultFilters);
     setPageOffset(0);
+  }
+
+  function handleSeasonChange(season: number | null) {
+    setSelectedSeason(season);
+    setSelectedTeamId(null);
+    setSelectedPitcher(null);
+    setPitcherQuery("");
+    setSelectedGamePk(null);
+    setSelectedPitch(null);
+  }
+
+  function handleTeamChange(teamId: number | null) {
+    setSelectedTeamId(teamId);
+    setSelectedPitcher(null);
+    setPitcherQuery("");
+    setSelectedGamePk(null);
+    setSelectedPitch(null);
   }
 
   function handleGameChange(gamePk: number | null) {
@@ -420,11 +539,30 @@ export default function ScoutingWorkspace() {
           </div>
         ) : null}
 
+        {pitcherSearchError ? (
+          <div className="error-banner" role="alert">
+            <strong>Pitcher search failed.</strong>
+            <span>{pitcherSearchError}</span>
+          </div>
+        ) : null}
+
         <section className="selector-bar">
+          <ScopeSelectors
+            seasons={seasons}
+            teams={teams}
+            selectedSeason={selectedSeason}
+            selectedTeamId={selectedTeamId}
+            loading={initialLoading || scopeLoading}
+            onSeasonChange={handleSeasonChange}
+            onTeamChange={handleTeamChange}
+          />
           <PitcherSelector
             pitchers={pitchers}
-            selectedPitcherId={selectedPitcherId}
-            loading={initialLoading}
+            selectedPitcher={selectedPitcher}
+            query={pitcherQuery}
+            total={pitcherTotal}
+            loading={initialLoading || pitcherSearchLoading}
+            onQueryChange={setPitcherQuery}
             onChange={handlePitcherChange}
           />
           <GameSelector

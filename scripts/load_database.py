@@ -23,6 +23,7 @@ import psycopg
 
 EXPECTED_TABLES = {
     "players",
+    "teams",
     "games",
     "pitches",
     "videos",
@@ -110,15 +111,40 @@ PLAYER_UPSERT_SQL = """
         bats = COALESCE(EXCLUDED.bats, players.bats)
 """
 
+TEAM_UPSERT_SQL = """
+    INSERT INTO teams (team_code, team_name)
+    VALUES (%(team_code)s, %(team_name)s)
+    ON CONFLICT (team_code) DO UPDATE
+    SET team_name = COALESCE(EXCLUDED.team_name, teams.team_name)
+"""
+
 GAME_UPSERT_SQL = """
-    INSERT INTO games (game_pk, game_date, game_type, home_team, away_team)
-    VALUES (%(game_pk)s, %(game_date)s, %(game_type)s, %(home_team)s, %(away_team)s)
+    INSERT INTO games (
+        game_pk,
+        game_date,
+        game_type,
+        home_team,
+        away_team,
+        home_team_id,
+        away_team_id
+    )
+    VALUES (
+        %(game_pk)s,
+        %(game_date)s,
+        %(game_type)s,
+        %(home_team)s,
+        %(away_team)s,
+        %(home_team_id)s,
+        %(away_team_id)s
+    )
     ON CONFLICT (game_pk) DO UPDATE
     SET
         game_date = EXCLUDED.game_date,
         game_type = EXCLUDED.game_type,
         home_team = EXCLUDED.home_team,
-        away_team = EXCLUDED.away_team
+        away_team = EXCLUDED.away_team,
+        home_team_id = EXCLUDED.home_team_id,
+        away_team_id = EXCLUDED.away_team_id
 """
 
 PITCH_UPSERT_SQL = """
@@ -450,7 +476,23 @@ def prepare_players(data: pd.DataFrame) -> list[dict[str, Any]]:
     return list(players.values())
 
 
-def prepare_games(data: pd.DataFrame) -> list[dict[str, Any]]:
+def prepare_teams(data: pd.DataFrame) -> list[dict[str, Any]]:
+    """Prepare distinct normalized team codes found in the source games."""
+    team_codes = {
+        str(value).strip().upper()
+        for column in ("home_team", "away_team")
+        for value in data[column].dropna()
+        if str(value).strip()
+    }
+    if not team_codes:
+        raise LoaderError("The cleaned CSV does not contain any team codes.")
+    return [{"team_code": team_code, "team_name": None} for team_code in sorted(team_codes)]
+
+
+def prepare_games(
+    data: pd.DataFrame,
+    team_id_by_code: dict[str, int] | None = None,
+) -> list[dict[str, Any]]:
     """Prepare one consistent record per game_pk."""
     columns = ["game_pk", "game_date", "game_type", "home_team", "away_team"]
     distinct = data[columns].drop_duplicates()
@@ -464,13 +506,21 @@ def prepare_games(data: pd.DataFrame) -> list[dict[str, Any]]:
 
     records: list[dict[str, Any]] = []
     for row in distinct.itertuples(index=False):
+        home_team = str(row.home_team).strip().upper()
+        away_team = str(row.away_team).strip().upper()
         records.append(
             {
                 "game_pk": int(row.game_pk),
                 "game_date": row.game_date,
                 "game_type": optional_text(row.game_type),
-                "home_team": str(row.home_team).strip().upper(),
-                "away_team": str(row.away_team).strip().upper(),
+                "home_team": home_team,
+                "away_team": away_team,
+                "home_team_id": (
+                    team_id_by_code[home_team] if team_id_by_code is not None else None
+                ),
+                "away_team_id": (
+                    team_id_by_code[away_team] if team_id_by_code is not None else None
+                ),
             }
         )
     return records
@@ -613,7 +663,7 @@ def load_database(
 ) -> dict[str, Any]:
     """Load every entity inside one atomic PostgreSQL transaction."""
     players = prepare_players(data)
-    games = prepare_games(data)
+    teams = prepare_teams(data)
     source_pitch_ids = data["pitch_id"].astype(str).tolist()
 
     if connection_string:
@@ -659,13 +709,31 @@ def load_database(
                 verify_schema(cursor)
 
                 player_mlb_ids = [row["mlb_id"] for row in players]
-                game_ids = [row["game_pk"] for row in games]
+                team_codes = [row["team_code"] for row in teams]
 
                 existing_players = count_existing(
                     cursor,
                     "SELECT COUNT(*) FROM players WHERE mlb_id = ANY(%s)",
                     player_mlb_ids,
                 )
+                existing_teams = count_existing(
+                    cursor,
+                    "SELECT COUNT(*) FROM teams WHERE team_code = ANY(%s)",
+                    team_codes,
+                )
+                cursor.executemany(TEAM_UPSERT_SQL, teams)
+                cursor.execute(
+                    "SELECT team_id, team_code FROM teams WHERE team_code = ANY(%s)",
+                    (team_codes,),
+                )
+                team_id_by_code = {
+                    str(team_code): int(team_id) for team_id, team_code in cursor.fetchall()
+                }
+                if len(team_id_by_code) != len(team_codes):
+                    raise LoaderError("Not every team code resolved to teams.team_id.")
+
+                games = prepare_games(data, team_id_by_code)
+                game_ids = [row["game_pk"] for row in games]
                 existing_games = count_existing(
                     cursor,
                     "SELECT COUNT(*) FROM games WHERE game_pk = ANY(%s)",
@@ -767,12 +835,13 @@ def load_database(
                     """
                     SELECT
                         (SELECT COUNT(*) FROM players),
+                        (SELECT COUNT(*) FROM teams),
                         (SELECT COUNT(*) FROM games),
                         (SELECT COUNT(*) FROM pitches),
                         (SELECT COUNT(*) FROM videos)
                     """
                 )
-                total_players, total_games, total_pitches, total_videos = map(
+                total_players, total_teams, total_games, total_pitches, total_videos = map(
                     int, cursor.fetchone()
                 )
 
@@ -781,24 +850,28 @@ def load_database(
         "user": connected_user,
         "source": {
             "players": len(players),
+            "teams": len(teams),
             "games": len(games),
             "pitches": len(source_pitch_ids),
             "videos": len(videos),
         },
         "new": {
             "players": len(players) - existing_players,
+            "teams": len(teams) - existing_teams,
             "games": len(games) - existing_games,
             "pitches": len(source_pitch_ids) - existing_pitches,
             "videos": len(videos) - existing_videos,
         },
         "existing": {
             "players": existing_players,
+            "teams": existing_teams,
             "games": existing_games,
             "pitches": existing_pitches,
             "videos": existing_videos,
         },
         "totals": {
             "players": total_players,
+            "teams": total_teams,
             "games": total_games,
             "pitches": total_pitches,
             "videos": total_videos,
@@ -818,7 +891,7 @@ def print_report(report: dict[str, Any]) -> None:
         print(f"  {table:<8} {count:>6,}")
 
     print("\nLoad result")
-    for table in ["players", "games", "pitches", "videos"]:
+    for table in ["players", "teams", "games", "pitches", "videos"]:
         print(
             f"  {table:<8} "
             f"new={report['new'][table]:>6,}  "

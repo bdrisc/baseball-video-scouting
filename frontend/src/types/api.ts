@@ -13,6 +13,43 @@ export interface Pitcher {
   game_count: number;
   first_game: string;
   last_game: string;
+  team_codes?: string[];
+}
+
+export interface SeasonSummary {
+  season: number;
+  game_count: number;
+  pitcher_count: number;
+  pitch_count: number;
+  first_game: string;
+  last_game: string;
+}
+
+export interface TeamSummary {
+  team_id: number;
+  team_code: string;
+  team_name: string;
+  game_count: number;
+  pitcher_count: number;
+  pitch_count: number;
+}
+
+export interface PitcherSearchFilters {
+  q: string;
+  season: number | null;
+  team_id: number | null;
+  throws: "" | "L" | "R";
+  limit: number;
+  offset: number;
+}
+
+export interface PitcherSearchResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  has_previous: boolean;
+  has_next: boolean;
+  pitchers: Pitcher[];
 }
 
 export interface Game {
@@ -22,6 +59,8 @@ export interface Game {
   away_team: string;
   pitch_count: number;
   video_count: number;
+  season: number;
+  pitcher_team: string | null;
 }
 
 export interface PitcherGamesResponse {
@@ -90,6 +129,8 @@ export type SortOrder = "asc" | "desc";
 export interface PitchSearchFilters {
   pitcher_id: number;
   game_pk: number | null;
+  season: number | null;
+  team_id: number | null;
   batter_side: "" | "L" | "R";
   pitch_type: string;
   balls: number | null;

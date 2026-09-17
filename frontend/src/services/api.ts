@@ -6,7 +6,11 @@ import type {
   PitchSearchFilters,
   PitchSearchResponse,
   Pitcher,
+  PitcherSearchFilters,
+  PitcherSearchResponse,
   PitcherGamesResponse,
+  SeasonSummary,
+  TeamSummary,
   PlaylistDetail,
   PlaylistItemsWrite,
   PlaylistRecord,
@@ -64,12 +68,47 @@ export function getPitchers(signal?: AbortSignal): Promise<Pitcher[]> {
   return request<Pitcher[]>("/pitchers", { signal });
 }
 
+export function getSeasons(signal?: AbortSignal): Promise<SeasonSummary[]> {
+  return request<SeasonSummary[]>("/seasons", { signal });
+}
+
+export function getTeams(
+  season: number | null,
+  signal?: AbortSignal,
+): Promise<TeamSummary[]> {
+  const parameters = new URLSearchParams();
+  if (season !== null) parameters.set("season", String(season));
+  const query = parameters.toString();
+  return request<TeamSummary[]>(`/teams${query ? `?${query}` : ""}`, { signal });
+}
+
+export function searchPitchers(
+  filters: PitcherSearchFilters,
+  signal?: AbortSignal,
+): Promise<PitcherSearchResponse> {
+  const parameters = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== null && value !== undefined && value !== "") {
+      parameters.set(key, String(value));
+    }
+  }
+  return request<PitcherSearchResponse>(
+    `/pitchers/search?${parameters.toString()}`,
+    { signal },
+  );
+}
+
 export function getPitcherGames(
   pitcherId: number,
+  scope: { season: number | null; team_id: number | null },
   signal?: AbortSignal,
 ): Promise<PitcherGamesResponse> {
+  const parameters = new URLSearchParams();
+  if (scope.season !== null) parameters.set("season", String(scope.season));
+  if (scope.team_id !== null) parameters.set("team_id", String(scope.team_id));
+  const query = parameters.toString();
   return request<PitcherGamesResponse>(
-    `/pitchers/${pitcherId}/games`,
+    `/pitchers/${pitcherId}/games${query ? `?${query}` : ""}`,
     { signal },
   );
 }

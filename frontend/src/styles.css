@@ -176,7 +176,12 @@ main {
 
 .selector-bar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.4fr) minmax(130px, auto);
+  grid-template-columns:
+    minmax(130px, 0.7fr)
+    minmax(160px, 0.9fr)
+    minmax(260px, 1.4fr)
+    minmax(260px, 1.3fr)
+    minmax(130px, auto);
   gap: 18px;
   align-items: end;
   margin-bottom: 22px;
@@ -197,7 +202,8 @@ main {
   letter-spacing: 0.06em;
 }
 
-.selector-field select {
+.selector-field select,
+.selector-field input {
   width: 100%;
   padding: 0 12px;
   border: 1px solid #cfd5db;
@@ -208,6 +214,24 @@ main {
   font-weight: 600;
   text-transform: none;
   letter-spacing: normal;
+}
+
+.pitcher-selector-field {
+  grid-template-columns: 1fr;
+}
+
+.selector-help {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+@media (max-width: 1180px) {
+  .selector-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .selector-field select:disabled {

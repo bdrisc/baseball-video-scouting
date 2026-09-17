@@ -24,6 +24,8 @@ def test_combined_filters_are_passed_as_sql_parameters(
     )
     filters = PitchFilters(
         pitcher_id=7,
+        season=2026,
+        team_id=12,
         pitch_type="sl",
         balls=1,
         strikes=2,
@@ -40,12 +42,16 @@ def test_combined_filters_are_passed_as_sql_parameters(
     assert response["total"] == 1
     assert response["pitches"][0]["pitch_id"] == "824566_10_5"
     assert "p.pitch_type = %s" in call.query
+    assert "g.season = %s" in call.query
+    assert "g.home_team_id" in call.query
     assert "p.balls = %s" in call.query
     assert "p.strikes = %s" in call.query
     assert "COALESCE(v.video_available, FALSE) = %s" in call.query
     assert "swinging_strike" not in call.query
     assert call.parameters == [
         7,
+        2026,
+        12,
         "SL",
         1,
         2,

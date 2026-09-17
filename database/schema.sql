@@ -14,6 +14,13 @@ CREATE TABLE IF NOT EXISTS players (
         CHECK (bats IS NULL OR bats IN ('L', 'R', 'S'))
 );
 
+CREATE TABLE IF NOT EXISTS teams (
+    team_id BIGSERIAL PRIMARY KEY,
+    team_code VARCHAR(5) NOT NULL UNIQUE,
+    team_name TEXT,
+    CONSTRAINT teams_code_check CHECK (team_code = UPPER(team_code))
+);
+
 CREATE TABLE IF NOT EXISTS games (
     game_pk BIGINT PRIMARY KEY,
     game_date DATE NOT NULL,
@@ -23,6 +30,8 @@ CREATE TABLE IF NOT EXISTS games (
     game_type VARCHAR(2),
     home_team VARCHAR(5) NOT NULL,
     away_team VARCHAR(5) NOT NULL,
+    home_team_id BIGINT NOT NULL REFERENCES teams(team_id),
+    away_team_id BIGINT NOT NULL REFERENCES teams(team_id),
     CONSTRAINT games_season_check CHECK (season BETWEEN 1876 AND 2200)
 );
 
@@ -157,11 +166,25 @@ CREATE TABLE IF NOT EXISTS import_errors (
 CREATE INDEX IF NOT EXISTS players_name_lower_idx
     ON players (LOWER(player_name));
 
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX IF NOT EXISTS players_name_trgm_idx
+    ON players USING GIN (LOWER(player_name) gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS teams_code_idx
+    ON teams (team_code);
+
 CREATE INDEX IF NOT EXISTS games_season_date_idx
     ON games (season, game_date, game_pk);
 
 CREATE INDEX IF NOT EXISTS games_team_date_idx
     ON games (home_team, away_team, game_date);
+
+CREATE INDEX IF NOT EXISTS games_season_home_team_idx
+    ON games (season, home_team_id, game_date, game_pk);
+
+CREATE INDEX IF NOT EXISTS games_season_away_team_idx
+    ON games (season, away_team_id, game_date, game_pk);
 
 CREATE INDEX IF NOT EXISTS pitches_pitcher_id_idx
     ON pitches (pitcher_id);

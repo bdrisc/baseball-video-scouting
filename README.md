@@ -17,6 +17,7 @@ The application stores links to official MLB video pages. It does not download, 
 ## Current capabilities
 
 - Repeatable one-command ingestion from a manual Savant CSV export
+- Season and team discovery with indexed server-side pitcher-name search
 - Reproducible optional video joins using stable pitch IDs
 - Relational PostgreSQL storage for players, games, pitches, videos, and playlists
 - Validated FastAPI endpoints for paginated pitch filters, allowlisted server-side sorting, summaries, videos, and playlist operations

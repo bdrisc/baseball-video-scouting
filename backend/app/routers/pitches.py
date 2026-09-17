@@ -79,6 +79,13 @@ SWING_DESCRIPTIONS = (
     "hit_into_play_score",
 )
 
+PITCHER_TEAM_ID_SQL = """
+    CASE
+        WHEN LOWER(p.inning_half) = 'top' THEN g.home_team_id
+        WHEN LOWER(p.inning_half) IN ('bot', 'bottom') THEN g.away_team_id
+    END
+"""
+
 
 def _build_pitch_where(filters: PitchFilterCriteria) -> tuple[str, list[object]]:
     """Build one parameterized WHERE clause shared by rows and aggregates."""
@@ -88,6 +95,8 @@ def _build_pitch_where(filters: PitchFilterCriteria) -> tuple[str, list[object]]
     sql_filters = (
         ("p.pitcher_id = %s", filters.pitcher_id),
         ("p.game_pk = %s", filters.game_pk),
+        ("g.season = %s", filters.season),
+        (f"({PITCHER_TEAM_ID_SQL}) = %s", filters.team_id),
         (
             "p.pitch_type = %s",
             filters.pitch_type.value if filters.pitch_type is not None else None,

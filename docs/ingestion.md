@@ -91,7 +91,21 @@ psql $env:DATABASE_URL -v ON_ERROR_STOP=1 `
 The migration is safe to rerun. It creates `import_batches` and
 `import_errors`, plus indexes used to recognize files that already loaded.
 
-## 5. Load all downloaded days with tracking
+## 5. Add normalized teams and discovery indexes
+
+Before loading season-wide data into an existing database, also apply the
+Step 6 team-discovery migration once:
+
+```powershell
+psql $env:DATABASE_URL -v ON_ERROR_STOP=1 `
+  -f database\migrations\003_teams_seasons_pitcher_search.sql
+```
+
+That migration creates normalized team identities and the indexes used by
+season, team, and pitcher-name discovery. The loader then upserts team codes
+before each game's foreign keys, so rerunning a daily file remains idempotent.
+
+## 6. Load all downloaded days with tracking
 
 After validating a representative day, process the directory:
 
@@ -155,7 +169,7 @@ The error table already supports an optional row number, pitch ID, and JSON
 context for future row-level recovery. Step 3 currently records file-level
 failures because each daily pitch load is deliberately all-or-nothing.
 
-## 6. Load a reviewed day into Neon PostgreSQL
+## 7. Load a reviewed day into Neon PostgreSQL
 
 Copy the Neon pooled connection string, then keep it only in the current
 PowerShell process:

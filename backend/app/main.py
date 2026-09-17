@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.routers import health, pitchers, pitches, playlists
+from app.routers import catalog, health, pitchers, pitches, playlists
 
 app = FastAPI(
     title="Baseball Video Scouting API",
@@ -37,6 +37,7 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(catalog.router)
 app.include_router(pitchers.router)
 app.include_router(pitches.router)
 app.include_router(playlists.router)
