@@ -2,9 +2,13 @@
 
 [Open the live application](https://dctxxfgaduzx1.cloudfront.net) · [View the FastAPI documentation](https://ne262esfdi.execute-api.us-east-1.amazonaws.com/docs)
 
-A full-stack baseball operations portfolio project that connects pitch-level Baseball Savant data, official MLB video links, PostgreSQL, a FastAPI REST API, and an interactive React scouting interface.
+**Stack:** React · TypeScript · FastAPI · PostgreSQL · AWS Lambda · API Gateway · S3 · CloudFront
 
-The application supports pitch searching, visual analysis, official video review, ordered playlists, scouting notes, and an advance report. It is a public workflow inspired by systems used in professional baseball, but it is not BATS, TruMedia, or Synergy experience.
+A video-first baseball operations portfolio project that connects pitch-level Baseball Savant data, official MLB video links, PostgreSQL, a FastAPI REST API, and an interactive React scouting interface.
+
+The application is designed around official video review, clip-to-clip navigation, ordered playlists, scouting notes, and evidence-backed advance reports. Pitch searching and compact supporting charts help a scout find film; they are not intended to duplicate a full statistical pitcher dashboard. It is a public workflow inspired by systems used in professional baseball, but it is not BATS, TruMedia, or Synergy experience.
+
+**Portfolio role:** this project demonstrates video-centered product design, React and TypeScript interaction, FastAPI services, and serverless AWS deployment. The companion MLB Pitch Intelligence project owns deep statistical evaluation; this workspace uses metrics only when they help a scout find or explain a clip.
 
 ## Live portfolio version
 
@@ -32,13 +36,13 @@ The application stores links to official MLB video pages. It does not download, 
 
 ## Application preview
 
-### Pitch-search workspace
-
-![Pitch-search workspace](docs/screenshots/workspace-overview.png)
-
-### Pitch details, video and visual analysis
+### Video review and pitch-level observations
 
 ![Pitch analysis](docs/screenshots/pitch-analysis.png)
+
+### Search and playlist-building workspace
+
+![Pitch-search workspace](docs/screenshots/workspace-overview.png)
 
 ### Advance scouting report
 
