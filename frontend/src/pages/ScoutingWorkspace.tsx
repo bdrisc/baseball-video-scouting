@@ -100,6 +100,7 @@ export default function ScoutingWorkspace() {
   const [selectedPitch, setSelectedPitch] = useState<Pitch | null>(null);
   const [scoutingNotes, setScoutingNotes] = useState<Record<string, string>>({});
   const [playlistReviewActive, setPlaylistReviewActive] = useState(false);
+  const [analysisExpanded, setAnalysisExpanded] = useState(false);
   const [activePlaylist, setActivePlaylist] = useState<PlaylistDetail | null>(null);
   const [initialPlaylistId] = useState<number | null>(() => {
     const value = Number(new URLSearchParams(window.location.search).get("playlist"));
@@ -297,11 +298,17 @@ export default function ScoutingWorkspace() {
         setPitches(response.pitches);
         setTotalMatches(response.total);
         setSelectedPitch((currentPitch) => {
-          if (!currentPitch) return null;
+          if (currentPitch) {
+            const matchingPitch = response.pitches.find(
+              (pitch) => pitch.pitch_id === currentPitch.pitch_id,
+            );
+            if (matchingPitch) return matchingPitch;
+          }
+
           return (
             response.pitches.find(
-              (pitch) => pitch.pitch_id === currentPitch.pitch_id,
-            ) ?? null
+              (pitch) => pitch.video_available && pitch.video_url,
+            ) ?? response.pitches[0] ?? null
           );
         });
       } catch (requestError) {
@@ -488,18 +495,13 @@ export default function ScoutingWorkspace() {
 
   function selectPitchAndReveal(pitch: Pitch) {
     setSelectedPitch(pitch);
-    window.requestAnimationFrame(() => {
-      document
-        .getElementById(`pitch-row-${pitch.pitch_id}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
   }
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <div>
-          <p className="brand-kicker">BASEBALL OPERATIONS</p>
+          <p className="brand-kicker">BASEBALL VIDEO OPERATIONS</p>
           <h1>Video Scouting Workspace</h1>
         </div>
         <div
@@ -517,13 +519,13 @@ export default function ScoutingWorkspace() {
       <main>
         <section className="workspace-intro">
           <div>
-            <p className="eyebrow">Step 20 · Advance report</p>
+            <p className="eyebrow">Film review · Evidence building</p>
             <h2>
               {selectedPitcher?.player_name ?? "Select a pitcher to begin"}
             </h2>
             <p>
-              Search pitch-level data, review official video, organize
-              playlists, and build an advance report from one workflow.
+              Review official pitch video, capture observations, organize
+              evidence into playlists, and carry selected clips into an advance report.
             </p>
           </div>
           <div className="api-address">
@@ -628,6 +630,47 @@ export default function ScoutingWorkspace() {
               loading={aggregateLoading}
             />
 
+            <div className="workflow-heading">
+              <div>
+                <p className="eyebrow">Primary workspace</p>
+                <h2>Review film and capture evidence</h2>
+              </div>
+              <p>
+                The first available clip is selected automatically. Navigate video, add useful
+                pitches to the playlist, and record what the numbers cannot explain.
+              </p>
+            </div>
+
+            <div className="review-grid">
+              <VideoPanel
+                pitch={selectedPitch}
+                pitches={playlistReviewActive ? stagedPitches : pitches}
+                stagedPitchIds={stagedPitches.map((pitch) => pitch.pitch_id)}
+                onSelect={selectPitchAndReveal}
+                onAddToPlaylist={stagePitch}
+                playlistReviewActive={playlistReviewActive}
+                onExitPlaylistReview={() => setPlaylistReviewActive(false)}
+              />
+              <PitchDetails
+                pitch={selectedPitch}
+                scoutingNote={
+                  selectedPitch ? scoutingNotes[selectedPitch.pitch_id] ?? "" : ""
+                }
+                onScoutingNoteChange={(note) => {
+                  if (!selectedPitch) return;
+                  updateScoutingNote(selectedPitch.pitch_id, note);
+                }}
+              />
+            </div>
+
+            <div className="workflow-heading compact-workflow-heading">
+              <div>
+                <p className="eyebrow">Evidence finder</p>
+                <h2>Find supporting pitches</h2>
+              </div>
+              <p>Filter and sort the pitch log to decide which clips deserve review.</p>
+            </div>
+
             <PitchTable
               pitches={pitches}
               totalMatches={totalMatches}
@@ -652,56 +695,55 @@ export default function ScoutingWorkspace() {
               }}
             />
 
-            <div className="two-column-grid">
-              <PitchDetails
-                pitch={selectedPitch}
-                scoutingNote={
-                  selectedPitch ? scoutingNotes[selectedPitch.pitch_id] ?? "" : ""
-                }
-                onScoutingNoteChange={(note) => {
-                  if (!selectedPitch) return;
-                  updateScoutingNote(selectedPitch.pitch_id, note);
-                }}
-              />
-              <VideoPanel
-                pitch={selectedPitch}
-                pitches={playlistReviewActive ? stagedPitches : pitches}
-                stagedPitchIds={stagedPitches.map((pitch) => pitch.pitch_id)}
-                onSelect={selectPitchAndReveal}
-                onAddToPlaylist={stagePitch}
-                playlistReviewActive={playlistReviewActive}
-                onExitPlaylistReview={() => setPlaylistReviewActive(false)}
-              />
-            </div>
-
-            <div className="two-column-grid">
-              <StrikeZonePlot
-                pitches={pitches}
-                selectedPitchId={selectedPitch?.pitch_id ?? null}
-                onSelect={selectPitchAndReveal}
-              />
-              <MovementPlot
-                pitches={pitches}
-                selectedPitchId={selectedPitch?.pitch_id ?? null}
-                onSelect={selectPitchAndReveal}
-              />
-            </div>
-
             {aggregates ? (
               <>
-                <div className="two-column-grid">
-                  <PitchUsageChart rows={aggregates.pitch_usage} />
-                  <VelocityByInningChart
-                    rows={aggregates.velocity_by_inning}
-                  />
-                </div>
+                <section className="panel supporting-analysis">
+                  <div className="panel-heading supporting-analysis-heading">
+                    <div>
+                      <p className="eyebrow">Supporting analysis</p>
+                      <h2>Use charts when a clip needs statistical context</h2>
+                      <p className="panel-copy">
+                        These views support film review; the dedicated Pitch Intelligence project
+                        remains the full statistical evaluation surface.
+                      </p>
+                    </div>
+                    <button
+                      className="secondary-button analysis-toggle"
+                      type="button"
+                      aria-expanded={analysisExpanded}
+                      onClick={() => setAnalysisExpanded((expanded) => !expanded)}
+                    >
+                      {analysisExpanded ? "Hide supporting charts" : "Show supporting charts"}
+                    </button>
+                  </div>
 
-                <div className="two-column-grid">
-                  <UsageByCountChart rows={aggregates.usage_by_count} />
-                  <ResultsByBatterSideChart
-                    rows={aggregates.results_by_batter_side}
-                  />
-                </div>
+                  {analysisExpanded ? (
+                    <div className="supporting-analysis-content">
+                      <div className="two-column-grid">
+                        <StrikeZonePlot
+                          pitches={pitches}
+                          selectedPitchId={selectedPitch?.pitch_id ?? null}
+                          onSelect={selectPitchAndReveal}
+                        />
+                        <MovementPlot
+                          pitches={pitches}
+                          selectedPitchId={selectedPitch?.pitch_id ?? null}
+                          onSelect={selectPitchAndReveal}
+                        />
+                      </div>
+
+                      <div className="two-column-grid">
+                        <PitchUsageChart rows={aggregates.pitch_usage} />
+                        <VelocityByInningChart rows={aggregates.velocity_by_inning} />
+                      </div>
+
+                      <div className="two-column-grid">
+                        <UsageByCountChart rows={aggregates.usage_by_count} />
+                        <ResultsByBatterSideChart rows={aggregates.results_by_batter_side} />
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
 
                 <ScoutingReport
                   metrics={aggregates.report}
