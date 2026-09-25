@@ -1,0 +1,229 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Separate authenticated API and Cognito pool for private season-wide scouting
+
+Parameters:
+  PrivateDatabaseSecretArn:
+    Type: String
+    Description: ARN of the distinct private-season-wide Secrets Manager DATABASE_URL secret
+    AllowedPattern: "^arn:aws:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:baseball-video-scouting/private-season-wide/database-[A-Za-z0-9]+$"
+
+  PrivateAuthDomainPrefix:
+    Type: String
+    Description: Globally unique Cognito domain prefix for this private application
+    AllowedPattern: "^[a-z0-9][a-z0-9-]{4,61}[a-z0-9]$"
+
+  PrivateFrontendOrigin:
+    Type: String
+    Default: http://localhost:5173
+    Description: Browser origin for the private frontend (no trailing slash)
+
+  PrivateCallbackUrl:
+    Type: String
+    Default: http://localhost:5173/
+    Description: Exact browser callback and sign-out URL registered with Cognito
+
+Resources:
+  PrivateUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${AWS::StackName}-users
+      UserPoolTier: LITE
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      MfaConfiguration: "ON"
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 14
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+
+  PrivateAuthDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref PrivateAuthDomainPrefix
+      ManagedLoginVersion: 1
+      UserPoolId: !Ref PrivateUserPool
+
+  PrivateResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      Identifier: baseball-video-scouting
+      Name: Private Scouting API
+      UserPoolId: !Ref PrivateUserPool
+      Scopes:
+        - ScopeName: access
+          ScopeDescription: Access the private scouting API
+
+  PrivateAppClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: PrivateResourceServer
+    Properties:
+      ClientName: !Sub ${AWS::StackName}-browser
+      UserPoolId: !Ref PrivateUserPool
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - baseball-video-scouting/access
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - !Ref PrivateCallbackUrl
+      LogoutURLs:
+        - !Ref PrivateCallbackUrl
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+
+  PrivateApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/http-api/${AWS::StackName}
+      RetentionInDays: 14
+
+  PrivateApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: !Sub ${AWS::StackName}-api
+      StageName: "$default"
+      FailOnWarnings: true
+      DefinitionBody:
+        openapi: "3.0.1"
+        info:
+          title: Private Scouting API
+          version: "1.0"
+        paths: {}
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref PrivateFrontendOrigin
+        AllowHeaders:
+          - Authorization
+          - Content-Type
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        MaxAge: 300
+      Auth:
+        Authorizers:
+          PrivateJwt:
+            IdentitySource: "$request.header.Authorization"
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.${AWS::URLSuffix}/${PrivateUserPool}
+              audience:
+                - !Ref PrivateAppClient
+            AuthorizationScopes:
+              - baseball-video-scouting/access
+        DefaultAuthorizer: PrivateJwt
+      AccessLogSettings:
+        DestinationArn: !GetAtt PrivateApiAccessLogGroup.Arn
+        Format: >-
+          {"requestId":"$context.requestId","routeKey":"$context.routeKey","status":"$context.status","integrationError":"$context.integrationErrorMessage"}
+
+  PrivateFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ReadPrivateDatabaseSecret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref PrivateDatabaseSecretArn
+
+  PrivateFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      DockerContext: .
+      Dockerfile: backend/Dockerfile.lambda
+      DockerTag: python3.12-v1
+    Properties:
+      PackageType: Image
+      Architectures:
+        - x86_64
+      MemorySize: 512
+      Timeout: 30
+      Role: !GetAtt PrivateFunctionRole.Arn
+      Environment:
+        Variables:
+          FRONTEND_ORIGINS: !Ref PrivateFrontendOrigin
+          DB_SECRET_ARN: !Ref PrivateDatabaseSecretArn
+          READ_ONLY_MODE: "false"
+      Events:
+        RootRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PrivateApi
+            Path: /
+            Method: ANY
+            PayloadFormatVersion: "2.0"
+        ProxyRoute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PrivateApi
+            Path: /{proxy+}
+            Method: ANY
+            PayloadFormatVersion: "2.0"
+        RootPreflight:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PrivateApi
+            Path: /
+            Method: OPTIONS
+            PayloadFormatVersion: "2.0"
+            Auth:
+              Authorizer: NONE
+        ProxyPreflight:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PrivateApi
+            Path: /{proxy+}
+            Method: OPTIONS
+            PayloadFormatVersion: "2.0"
+            Auth:
+              Authorizer: NONE
+
+  PrivateLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${PrivateFunction}
+      RetentionInDays: 14
+
+Outputs:
+  PrivateApiUrl:
+    Description: Authenticated API base URL (requires a scoped Cognito access token)
+    Value: !Sub https://${PrivateApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+
+  UserPoolId:
+    Value: !Ref PrivateUserPool
+
+  ClientId:
+    Value: !Ref PrivateAppClient
+
+  Issuer:
+    Value: !Sub https://cognito-idp.${AWS::Region}.${AWS::URLSuffix}/${PrivateUserPool}
+
+  AuthDomain:
+    Value: !Sub https://${PrivateAuthDomainPrefix}.auth.${AWS::Region}.amazoncognito.com

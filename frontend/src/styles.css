@@ -52,6 +52,29 @@ a:focus-visible {
   min-height: 100vh;
 }
 
+.private-signin {
+  width: min(480px, calc(100% - 40px));
+  margin: 12vh auto;
+  padding: 36px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.private-signin h1 {
+  margin: 0 0 24px;
+}
+
+.private-session-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 24px;
+  background: #fff;
+  color: var(--ink);
+}
+
 .topbar {
   display: flex;
   align-items: center;
