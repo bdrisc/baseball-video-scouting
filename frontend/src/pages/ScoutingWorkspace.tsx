@@ -519,13 +519,12 @@ export default function ScoutingWorkspace() {
       <main>
         <section className="workspace-intro">
           <div>
-            <p className="eyebrow">Film review · Evidence building</p>
             <h2>
               {selectedPitcher?.player_name ?? "Select a pitcher to begin"}
             </h2>
             <p>
-              Review official pitch video, capture observations, organize
-              evidence into playlists, and carry selected clips into an advance report.
+              Search pitch level data, review video, organize playlists, and build
+              an advance report from one workflow.
             </p>
           </div>
           <div className="api-address">
