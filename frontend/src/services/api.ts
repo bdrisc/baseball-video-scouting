@@ -17,6 +17,7 @@ import type {
   PlaylistSummary,
   PlaylistWrite,
 } from "../types/api";
+import { getPrivateAccessToken, PRIVATE_MODE } from "./privateAuth";
 
 export const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000"
@@ -33,11 +34,13 @@ interface RequestOptions {
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { signal, method = "GET", body } = options;
+  const token = PRIVATE_MODE ? await getPrivateAccessToken() : null;
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
       Accept: "application/json",
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal,

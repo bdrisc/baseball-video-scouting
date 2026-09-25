@@ -31,6 +31,7 @@ The application stores links to official MLB video pages. It does not download, 
 - Persistent ordered playlists with per-pitch notes in local development
 - Read-only public portfolio mode with an in-browser review queue
 - Managed production deployment through AWS and Neon PostgreSQL
+- Separate invite-only Cognito/API Gateway deployment template and local sign-in flow for the private season-wide application ([setup](docs/private-auth.md))
 - Advance-report view covering arsenal, count and handedness tendencies, location, putaway approach, and damage allowed
 - Automated Python and React tests for data logic, API behavior, SQL, playlists, video navigation, and report calculations
 - Dockerized FastAPI, React/Nginx, PostgreSQL 18, and automatic data-loading services
