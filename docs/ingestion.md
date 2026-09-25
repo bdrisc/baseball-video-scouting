@@ -75,7 +75,8 @@ The dry run:
 
 Video input is optional. Without a video table, pitches are loaded with no new
 video rows. The later official-video matching process can add them by
-`pitch_id`.
+`pitch_id`; see [official video matching](video-matching.md) after importing
+the corresponding pitch dates into the private database.
 
 ## 4. Add import tracking to Neon PostgreSQL
 
