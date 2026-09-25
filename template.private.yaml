@@ -94,7 +94,6 @@ Resources:
   PrivateApi:
     Type: AWS::Serverless::HttpApi
     Properties:
-      Name: !Sub ${AWS::StackName}-api
       StageName: "$default"
       FailOnWarnings: true
       DefinitionBody:
