@@ -34,6 +34,22 @@ function isOfficialDirectMlbVideo(url: string | null): boolean {
   }
 }
 
+function inlineVideoUrl(pitch: Pitch | null): string | null {
+  if (!pitch?.video_available || !pitch.video_url) return null;
+  if (isOfficialDirectMlbVideo(pitch.video_url)) return pitch.video_url;
+
+  // One local, private test clip. The original official page remains the fallback.
+  const clipUrl = import.meta.env.VITE_PRIVATE_TEST_VIDEO_URL ?? "";
+  if (
+    import.meta.env.VITE_AUTH_MODE === "private" &&
+    pitch.pitch_id === import.meta.env.VITE_PRIVATE_TEST_PITCH_ID &&
+    isOfficialDirectMlbVideo(clipUrl)
+  ) {
+    return clipUrl;
+  }
+  return null;
+}
+
 function pitchSummary(pitch: Pitch): string {
   return `${pitch.pitch_type} · ${pitch.velocity?.toFixed(1) ?? "—"} mph · ${pitch.balls}-${pitch.strikes}`;
 }
@@ -49,12 +65,12 @@ export default function VideoPanel({
 }: VideoPanelProps) {
   const [embedFailed, setEmbedFailed] = useState(false);
   const videoAvailable = Boolean(pitch?.video_available && pitch.video_url);
-  const directVideo = isOfficialDirectMlbVideo(pitch?.video_url ?? null);
+  const directVideo = inlineVideoUrl(pitch);
   const staged = pitch ? stagedPitchIds.includes(pitch.pitch_id) : false;
 
   useEffect(() => {
     setEmbedFailed(false);
-  }, [pitch?.video_url]);
+  }, [pitch?.video_url, pitch?.pitch_id]);
 
   const navigation = useMemo(() => {
     if (!pitch) {
@@ -119,17 +135,17 @@ export default function VideoPanel({
         </div>
       ) : null}
 
-      {videoAvailable && directVideo && !embedFailed ? (
+      {directVideo && !embedFailed ? (
         <div className="video-player-wrap">
           <video
-            key={pitch?.video_url}
+            key={directVideo}
             className="video-player"
             controls
             playsInline
             preload="metadata"
             onError={() => setEmbedFailed(true)}
           >
-            <source src={pitch?.video_url ?? undefined} type="video/mp4" />
+            <source src={directVideo} type="video/mp4" />
             Your browser does not support HTML5 video.
           </video>
         </div>
