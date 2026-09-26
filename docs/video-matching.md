@@ -68,3 +68,38 @@ an uncertain match into an automatic link by guessing its `playId`.
 
 Both the raw MLB feed cache and generated CSVs are ignored by Git. Only
 page URLs are stored in PostgreSQL; MLB video media stays on official sites.
+
+## 3. Retry reviewed pitches
+
+After importing a month, rerun **only its reviewed games** with fresh MLB feeds.
+This does not change the database or overwrite the original monthly report:
+
+```powershell
+$report = 'data\processed\video_matches\2026-04-01_2026-04-30\video_match_report.csv'
+python -m scripts.recover_video_links --report $report --refresh
+```
+
+The command writes `recovery/recovered_links.csv` with only exact game,
+at-bat, pitch number, pitcher, batter, inning, and half-inning matches that
+have a unique official `playId` not assigned elsewhere in that report.
+`recovery/still_needs_review.csv` gives the remaining reason and up to five
+same-at-bat URLs as **possible** events for manual inspection. These possible
+URLs are not confirmed matches and cannot be imported automatically. Missing
+source CSVs or changed source identities stop the retry.
+
+Inspect a sample of the recovered links and their actual playback first. Then
+use the existing guarded importer against the **private** Neon branch, starting
+with a dry run:
+
+```powershell
+$privateHost = ([Uri]$env:DATABASE_URL).Host
+$links = 'data\processed\video_matches\2026-04-01_2026-04-30\recovery\recovered_links.csv'
+python -m scripts.apply_video_links --links $links --expected-host $privateHost
+python -m scripts.apply_video_links --links $links --expected-host $privateHost --apply
+```
+
+Run the import only when `recovered_links.csv` contains rows and the host
+matches the private branch in Neon. The importer preserves existing links.
+If there are zero recovered links, leave that month unchanged. Recheck
+coverage with the season audit after importing recovered links; its original
+review report still records the original match attempt.
