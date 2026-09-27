@@ -50,6 +50,23 @@ function inlineVideoUrl(pitch: Pitch | null): string | null {
   return null;
 }
 
+function officialPlayId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const page = new URL(url);
+    const playId = page.searchParams.get("playId");
+    return page.protocol === "https:" &&
+      page.hostname === "baseballsavant.mlb.com" &&
+      page.pathname === "/sporty-videos" &&
+      page.searchParams.size === 1 &&
+      playId !== null &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playId)
+      ? playId : null;
+  } catch {
+    return null;
+  }
+}
+
 function pitchSummary(pitch: Pitch): string {
   return `${pitch.pitch_type} · ${pitch.velocity?.toFixed(1) ?? "—"} mph · ${pitch.balls}-${pitch.strikes}`;
 }
@@ -64,13 +81,39 @@ export default function VideoPanel({
   onExitPlaylistReview,
 }: VideoPanelProps) {
   const [embedFailed, setEmbedFailed] = useState(false);
+  const [resolvedClip, setResolvedClip] = useState<{ pitchId: string; url: string } | null>(null);
+  const [resolving, setResolving] = useState(false);
   const videoAvailable = Boolean(pitch?.video_available && pitch.video_url);
-  const directVideo = inlineVideoUrl(pitch);
+  const directVideo = inlineVideoUrl(pitch) ??
+    (resolvedClip && resolvedClip.pitchId === pitch?.pitch_id ? resolvedClip.url : null);
   const staged = pitch ? stagedPitchIds.includes(pitch.pitch_id) : false;
 
   useEffect(() => {
     setEmbedFailed(false);
   }, [pitch?.video_url, pitch?.pitch_id]);
+
+  useEffect(() => {
+    const playId = officialPlayId(pitch?.video_url);
+    if (import.meta.env.VITE_AUTH_MODE !== "private" || !pitch?.video_available ||
+        !playId || inlineVideoUrl(pitch)) {
+      setResolving(false);
+      return;
+    }
+    const controller = new AbortController();
+    setResolving(true);
+    fetch(`/__private_video_source?playId=${playId}`, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((body: { url?: string } | null) => {
+        if (!controller.signal.aborted && body?.url && isOfficialDirectMlbVideo(body.url)) {
+          setResolvedClip({ pitchId: pitch.pitch_id, url: body.url });
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!controller.signal.aborted) setResolving(false);
+      });
+    return () => controller.abort();
+  }, [pitch?.pitch_id, pitch?.video_available, pitch?.video_url]);
 
   const navigation = useMemo(() => {
     if (!pitch) {
@@ -156,7 +199,7 @@ export default function VideoPanel({
             {videoAvailable
               ? embedFailed
                 ? "Use the official MLB viewer"
-                : "Official MLB video available"
+                : resolving ? "Loading official MLB video…" : "Official MLB video available"
               : pitch
                 ? "No video linked to this pitch"
                 : "Select a pitch to review video"}
