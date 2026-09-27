@@ -86,6 +86,20 @@ API calls include an access token with the custom scope
 `baseball-video-scouting/access`. Browser tokens remain in session storage,
 not local storage. Sign out when finished.
 
+### Play linked pitches inside the local workspace
+
+When you select a pitch with an official Baseball Savant page link, the private
+Vite development server reads that one MLB page, verifies the pitch's play ID,
+and returns its official MP4 URL to the video panel. The browser plays the clip
+directly from MLB. URLs are cached in memory for this local server session;
+no video media is saved or imported into PostgreSQL. The original Savant page
+link remains available if an inline clip cannot be resolved or played.
+
+This lookup runs only with `npm run dev -- --mode private` on localhost. It does
+not run in the portfolio app or in a production frontend build. Previously
+configured `VITE_PRIVATE_TEST_PITCH_ID` and `VITE_PRIVATE_TEST_VIDEO_URL` values
+are optional and only override that one test pitch.
+
 ## Confirm access control
 
 Before signing in, the API must reject unauthenticated calls (401):
