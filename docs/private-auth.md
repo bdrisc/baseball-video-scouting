@@ -95,6 +95,11 @@ directly from MLB. URLs are cached in memory for this local server session;
 no video media is saved or imported into PostgreSQL. The original Savant page
 link remains available if an inline clip cannot be resolved or played.
 
+After a clip ends, the next linked pitch in the filtered results or active
+playlist starts automatically. Use the **Fullscreen** button above the player
+to keep the same player fullscreen as it advances. Playback stops at the end
+of the current results page or playlist.
+
 This lookup runs only with `npm run dev -- --mode private` on localhost. It does
 not run in the portfolio app or in a production frontend build. Previously
 configured `VITE_PRIVATE_TEST_PITCH_ID` and `VITE_PRIVATE_TEST_VIDEO_URL` values
