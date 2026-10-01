@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Pitch } from "../types/api";
 
@@ -82,7 +82,11 @@ export default function VideoPanel({
 }: VideoPanelProps) {
   const [embedFailed, setEmbedFailed] = useState(false);
   const [resolvedClip, setResolvedClip] = useState<{ pitchId: string; url: string } | null>(null);
+  const [unresolvedPitchId, setUnresolvedPitchId] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
+  const playerWrapRef = useRef<HTMLDivElement>(null);
+  const advanceToRef = useRef<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const videoAvailable = Boolean(pitch?.video_available && pitch.video_url);
   const directVideo = inlineVideoUrl(pitch) ??
     (resolvedClip && resolvedClip.pitchId === pitch?.pitch_id ? resolvedClip.url : null);
@@ -93,6 +97,20 @@ export default function VideoPanel({
   }, [pitch?.video_url, pitch?.pitch_id]);
 
   useEffect(() => {
+    if (advanceToRef.current && advanceToRef.current !== pitch?.pitch_id) {
+      advanceToRef.current = null;
+    }
+  }, [pitch?.pitch_id]);
+
+  useEffect(() => {
+    const updateFullscreen = () => {
+      setIsFullscreen(document.fullscreenElement === playerWrapRef.current);
+    };
+    document.addEventListener("fullscreenchange", updateFullscreen);
+    return () => document.removeEventListener("fullscreenchange", updateFullscreen);
+  }, []);
+
+  useEffect(() => {
     const playId = officialPlayId(pitch?.video_url);
     if (import.meta.env.VITE_AUTH_MODE !== "private" || !pitch?.video_available ||
         !playId || inlineVideoUrl(pitch)) {
@@ -100,15 +118,20 @@ export default function VideoPanel({
       return;
     }
     const controller = new AbortController();
+    setUnresolvedPitchId(null);
     setResolving(true);
     fetch(`/__private_video_source?playId=${playId}`, { signal: controller.signal })
       .then((response) => response.ok ? response.json() : null)
       .then((body: { url?: string } | null) => {
         if (!controller.signal.aborted && body?.url && isOfficialDirectMlbVideo(body.url)) {
           setResolvedClip({ pitchId: pitch.pitch_id, url: body.url });
+        } else if (!controller.signal.aborted) {
+          setUnresolvedPitchId(pitch.pitch_id);
         }
       })
-      .catch(() => undefined)
+      .catch(() => {
+        if (!controller.signal.aborted) setUnresolvedPitchId(pitch.pitch_id);
+      })
       .finally(() => {
         if (!controller.signal.aborted) setResolving(false);
       });
@@ -152,6 +175,30 @@ export default function VideoPanel({
     };
   }, [pitch, pitches]);
 
+  function advanceVideo() {
+    if (!navigation.next) return;
+    advanceToRef.current = navigation.next.pitch_id;
+    onSelect(navigation.next);
+  }
+
+  async function toggleFullscreen() {
+    if (!playerWrapRef.current) return;
+    try {
+      if (document.fullscreenElement === playerWrapRef.current) {
+        await document.exitFullscreen();
+      } else {
+        await playerWrapRef.current.requestFullscreen();
+      }
+    } catch {
+      // Browsers can refuse fullscreen; the inline player remains usable.
+    }
+  }
+
+  const showPlayer = !embedFailed && (
+    Boolean(directVideo) ||
+    (import.meta.env.VITE_AUTH_MODE === "private" && videoAvailable)
+  );
+
   return (
     <section className="panel video-panel">
       <div className="panel-heading">
@@ -178,19 +225,39 @@ export default function VideoPanel({
         </div>
       ) : null}
 
-      {directVideo && !embedFailed ? (
-        <div className="video-player-wrap">
+      {showPlayer ? (
+        <div className="video-player-wrap" ref={playerWrapRef}>
           <video
-            key={directVideo}
             className="video-player"
+            src={directVideo ?? undefined}
             controls
             playsInline
             preload="metadata"
             onError={() => setEmbedFailed(true)}
+            onEnded={advanceVideo}
+            onCanPlay={(event) => {
+              if (directVideo && advanceToRef.current === pitch?.pitch_id) {
+                advanceToRef.current = null;
+                void event.currentTarget.play().catch(() => undefined);
+              }
+            }}
           >
-            <source src={directVideo} type="video/mp4" />
             Your browser does not support HTML5 video.
           </video>
+          {!directVideo ? (
+            <span className="video-loading">
+              {unresolvedPitchId === pitch?.pitch_id && !resolving ? (
+                <a href={pitch?.video_url ?? undefined} target="_blank" rel="noreferrer">
+                  Open this pitch in MLB Film Room ↗
+                </a>
+              ) : "Loading official MLB video…"}
+            </span>
+          ) : null}
+          {import.meta.env.VITE_AUTH_MODE === "private" ? (
+            <button className="video-fullscreen-button" type="button" onClick={() => void toggleFullscreen()}>
+              {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            </button>
+          ) : null}
         </div>
       ) : (
         <div className="video-stage">
@@ -243,6 +310,7 @@ export default function VideoPanel({
           type="button"
           disabled={!navigation.next}
           onClick={() => {
+            advanceToRef.current = null;
             if (navigation.next) onSelect(navigation.next);
           }}
         >
@@ -263,6 +331,7 @@ export default function VideoPanel({
 
       <p className="video-source-note">
         Navigation follows the {playlistReviewActive ? "playlist" : "currently filtered pitch results"}.
+        The next linked pitch plays automatically when a video ends.
         Video remains hosted by MLB and is not downloaded or stored by this application.
       </p>
     </section>
